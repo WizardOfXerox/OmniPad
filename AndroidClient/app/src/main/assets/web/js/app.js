@@ -71,7 +71,26 @@ class OmniPadApp {
         };
 
         this.network.onProfileChange = (profileName) => {
-            const key = profileName.toLowerCase();
+            let key = (profileName || '').toLowerCase().trim();
+            const aliasMap = {
+                'xbox360': 'xbox',
+                'ps': 'playstation',
+                'ps4': 'playstation',
+                'ps5': 'playstation',
+                'switch': 'switch_pro',
+                'flight': 'hotas_flight',
+                'mmo': 'mmo_action',
+                'debug': 'debug_all',
+                'nes': 'nes_retro',
+                'saturn': 'sega_saturn',
+                'sega': 'sega_saturn',
+                'ps1': 'ps1_classic',
+                'ds': 'ds_3ds',
+                '3ds': 'ds_3ds'
+            };
+            if (aliasMap[key]) {
+                key = aliasMap[key];
+            }
             if (LAYOUT_PRESETS[key] && this.currentPresetKey !== key) {
                 this.showToast(`Auto-Profile: ${key.toUpperCase()}`);
                 this.currentPresetKey = key;
@@ -153,8 +172,12 @@ class OmniPadApp {
         const statusPill = document.getElementById('status-pill');
         const btnHideTopbar = document.getElementById('btn-hide-topbar');
 
+        let lastToggleTime = 0;
         const toggleTopBar = (e) => {
             if (e) e.stopPropagation();
+            const now = Date.now();
+            if (now - lastToggleTime < 250) return;
+            lastToggleTime = now;
             if (topBar) {
                 const isCollapsed = topBar.classList.toggle('collapsed');
                 document.body.classList.toggle('toolbar-open', !isCollapsed);
@@ -168,7 +191,11 @@ class OmniPadApp {
             }
         };
 
-        if (statusPill) statusPill.addEventListener('click', toggleTopBar);
+        if (statusPill) {
+            statusPill.addEventListener('pointerdown', (e) => e.stopPropagation());
+            statusPill.addEventListener('pointerup', toggleTopBar);
+            statusPill.addEventListener('click', toggleTopBar);
+        }
         if (btnHideTopbar) btnHideTopbar.addEventListener('click', hideTopBar);
 
         // Player Switcher Modal Openers
@@ -380,7 +407,7 @@ class OmniPadApp {
 
     loadProfile(key) {
         // Enforce cache invalidation for upgraded ergonomic presets
-        const PRESET_VERSION = 'v7_touchpad_switch_pro';
+        const PRESET_VERSION = 'v8_expanded_20_presets';
         if (localStorage.getItem('omnipad_version') !== PRESET_VERSION) {
             for (let k of Object.keys(LAYOUT_PRESETS)) {
                 localStorage.removeItem(`omnipad_layout_${k}`);

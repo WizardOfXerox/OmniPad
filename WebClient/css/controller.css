@@ -485,6 +485,56 @@ body.toolbar-open .hud-toggle-icon {
 .game-btn.btn-ps-crs { color: #40c4ff; border-color: rgba(64, 196, 255, 0.5); font-size: 20px; }
 .game-btn.btn-ps-crs.active { background: #40c4ff; color: #fff; box-shadow: 0 0 26px #40c4ff; }
 
+/* GameCube Specific Colors */
+.game-btn.btn-gc-a { background: radial-gradient(circle at 35% 35%, #2ed573 0%, #10ac84 100%); color: #fff; font-size: 32px; font-weight: 800; border: 2.5px solid #7bed9f; box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4); }
+.game-btn.btn-gc-a.active { background: #7bed9f; color: #000; box-shadow: 0 0 35px #2ed573; }
+
+.game-btn.btn-gc-b { background: radial-gradient(circle at 35% 35%, #ff4757 0%, #ee5253 100%); color: #fff; font-size: 20px; font-weight: 800; border: 2px solid #ff6b81; }
+.game-btn.btn-gc-b.active { background: #ff6b81; color: #fff; box-shadow: 0 0 25px #ff4757; }
+
+.game-btn.btn-gc-x, .game-btn.btn-gc-y { background: #2f3542; color: #ced6e0; font-size: 18px; font-weight: 700; border: 1.5px solid rgba(255, 255, 255, 0.25); border-radius: 20px; }
+.game-btn.btn-gc-x.active, .game-btn.btn-gc-y.active { background: #70a1ff; color: #000; box-shadow: 0 0 20px #70a1ff; }
+
+.game-btn.btn-gc-z { background: #5f27cd; color: #fff; border-color: #8c7ae6; font-weight: 800; }
+.game-btn.btn-gc-z.active { background: #9b59b6; box-shadow: 0 0 24px #5f27cd; }
+
+.game-btn.btn-gc-start { background: #eb2f06; color: #fff; font-size: 11px; font-weight: 700; border-radius: 50%; border: 1.5px solid #ff6b6b; }
+.game-btn.btn-gc-start.active { background: #ff7675; box-shadow: 0 0 20px #eb2f06; }
+
+.joystick-container.btn-gc-cstick .joystick-knob { background: radial-gradient(circle at 35% 35%, #fbc531 0%, #e1b12c 100%) !important; border-color: #f1c40f !important; }
+
+/* N64 Specific Colors */
+.game-btn.btn-n64-a { background: radial-gradient(circle at 35% 35%, #0984e3 0%, #0652dd 100%); color: #fff; font-weight: 800; border: 2px solid #74b9ff; }
+.game-btn.btn-n64-a.active { background: #74b9ff; color: #000; box-shadow: 0 0 26px #0984e3; }
+
+.game-btn.btn-n64-b { background: radial-gradient(circle at 35% 35%, #00b894 0%, #009432 100%); color: #fff; font-weight: 800; border: 2px solid #55efc4; }
+.game-btn.btn-n64-b.active { background: #55efc4; color: #000; box-shadow: 0 0 26px #00b894; }
+
+.game-btn.btn-n64-c { background: radial-gradient(circle at 35% 35%, #fdcb6e 0%, #e17055 100%); color: #000; font-weight: 800; font-size: 13px; border: 1.5px solid #ffeaa7; }
+.game-btn.btn-n64-c.active { background: #ffeaa7; color: #000; box-shadow: 0 0 22px #fdcb6e; }
+
+.game-btn.btn-n64-z { background: #636e72; color: #dfe6e9; border: 1.5px solid #b2bec3; }
+.game-btn.btn-n64-z.active { background: #dfe6e9; color: #000; box-shadow: 0 0 22px #dfe6e9; }
+
+.game-btn.btn-n64-start { background: #d63031; color: #fff; font-size: 11px; font-weight: 800; border-radius: 50%; border: 1.5px solid #ff7675; }
+.game-btn.btn-n64-start.active { background: #ff7675; box-shadow: 0 0 22px #d63031; }
+
+/* Sega Saturn / Genesis Colors */
+.game-btn.btn-sega-top { background: #1e272e; color: #808e9b; font-weight: 700; border: 1.5px solid rgba(255, 255, 255, 0.2); }
+.game-btn.btn-sega-top.active { background: #00d2d3; color: #000; box-shadow: 0 0 20px #00d2d3; }
+
+.game-btn.btn-sega-bot { background: #2f3542; color: #f1f2f6; font-weight: 800; border: 1.5px solid rgba(255, 255, 255, 0.3); }
+.game-btn.btn-sega-bot.active { background: #ff4757; color: #fff; box-shadow: 0 0 22px #ff4757; }
+
+.game-btn.btn-sega-start { background: #353b48; color: #f5f6fa; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: 700; }
+
+/* NES / Game Boy Colors */
+.game-btn.btn-nes-a, .game-btn.btn-nes-b { background: radial-gradient(circle at 35% 35%, #c23616 0%, #8c1404 100%); color: #fff; font-weight: 800; border: 2px solid #e84118; }
+.game-btn.btn-nes-a.active, .game-btn.btn-nes-b.active { background: #ff6b6b; color: #fff; box-shadow: 0 0 26px #c23616; }
+
+.game-btn.btn-nes-turbo { background: #718093; color: #fff; font-size: 11px; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.3); }
+.game-btn.btn-nes-turbo.active { background: #e84118; box-shadow: 0 0 18px #e84118; }
+
 /* System Buttons (View, Menu, Guide) */
 .sys-btn {
     border-radius: 50%;

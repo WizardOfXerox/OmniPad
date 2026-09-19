@@ -48,16 +48,38 @@
         <div class="hud-left">
             <label class="preset-label" for="preset-selector">Preset:</label>
             <select id="preset-selector">
-                <option value="xbox">Xbox 360 Standard</option>
-                <option value="playstation">PlayStation DualShock (+ Touchpad)</option>
-                <option value="switch_pro">Nintendo Switch Pro</option>
-                <option value="arcade">Arcade Fightstick (Sanwa 8-Btn)</option>
-                <option value="hitbox">Tekken Hitbox (8-Way)</option>
-                <option value="racing">Racing Wheel & Pedals</option>
-                <option value="fps">FPS Precision (Gyro)</option>
-                <option value="snes_retro">Retro SNES / Classic</option>
-                <option value="touchpad_only">Touchpad-Only (Edge-to-Edge)</option>
-                <option value="trackpad">Couch Desktop Mouse</option>
+                <optgroup label="Modern Consoles">
+                    <option value="xbox">Xbox 360 Standard</option>
+                    <option value="playstation">PlayStation DualShock (+ Touchpad)</option>
+                    <option value="switch_pro">Nintendo Switch Pro</option>
+                </optgroup>
+                <optgroup label="Fighting & Arcade">
+                    <option value="arcade">Arcade Fightstick (Sanwa 8-Btn)</option>
+                    <option value="hitbox">Tekken Hitbox (8-Way)</option>
+                    <option value="sega_saturn">Sega Saturn / Genesis (6-Btn)</option>
+                </optgroup>
+                <optgroup label="Retro Consoles">
+                    <option value="gamecube">Nintendo GameCube</option>
+                    <option value="n64">Nintendo 64</option>
+                    <option value="snes_retro">Retro SNES / Classic</option>
+                    <option value="ps1_classic">PlayStation 1 Classic (PSX)</option>
+                    <option value="nes_retro">NES / Game Boy Classic</option>
+                </optgroup>
+                <optgroup label="Handhelds">
+                    <option value="ds_3ds">Nintendo 3DS / Dual Screen</option>
+                </optgroup>
+                <optgroup label="Action & Simulators">
+                    <option value="twinstick">Twin-Stick Shooter</option>
+                    <option value="fps">FPS Precision (Gyro)</option>
+                    <option value="racing">Racing Wheel & Pedals</option>
+                    <option value="hotas_flight">Flight Sim / HOTAS</option>
+                    <option value="mmo_action">MMO / RPG Action Bar</option>
+                </optgroup>
+                <optgroup label="Utility & Diagnostics">
+                    <option value="touchpad_only">Touchpad-Only (Edge-to-Edge)</option>
+                    <option value="trackpad">Couch Desktop Mouse</option>
+                    <option value="debug_all">Diagnostic & Debug (All Controls)</option>
+                </optgroup>
             </select>
             <button id="btn-topbar-slot" class="hud-btn hud-slot-btn" title="Switch Player Slot">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>

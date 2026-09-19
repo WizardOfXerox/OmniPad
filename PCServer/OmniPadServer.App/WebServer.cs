@@ -193,6 +193,17 @@ public sealed class WebServer : IAsyncDisposable
             }
             else if (context.Request.Path == "/api/settings/profile")
             {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string target = context.Request.Query["name"].ToString();
+                    if (!string.IsNullOrWhiteSpace(target))
+                    {
+                        _ = BroadcastActiveProfileAsync(target);
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync($"{{\"success\":true,\"profile\":\"{target}\"}}");
+                        return;
+                    }
+                }
                 string current = _profileWatcher?.CurrentProfile ?? "xbox360";
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync($"{{\"profile\":\"{current}\"}}");
