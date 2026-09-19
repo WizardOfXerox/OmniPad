@@ -2,7 +2,10 @@ package com.omnipad.client.ui
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.net.wifi.WifiManager
@@ -85,6 +88,32 @@ class MainActivity : Activity() {
 
         // 4. Start Server Connection / Discovery
         autoConnectOrDiscover()
+
+        // 5. Monitor USB Cable Connection Lifecycle for Seamless Auto-Switching
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        }
+        try {
+            registerReceiver(powerReceiver, filter)
+        } catch (_: Exception) { }
+    }
+
+    private val powerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_POWER_CONNECTED -> {
+                    webView.post {
+                        webView.evaluateJavascript("if (window.omnipadApp && window.omnipadApp.network) window.omnipadApp.network.onUsbConnected();", null)
+                    }
+                }
+                Intent.ACTION_POWER_DISCONNECTED -> {
+                    webView.post {
+                        webView.evaluateJavascript("if (window.omnipadApp && window.omnipadApp.network) window.omnipadApp.network.onUsbDisconnected();", null)
+                    }
+                }
+            }
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -118,6 +147,9 @@ class MainActivity : Activity() {
     }
 
     private fun configureWebView() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -396,6 +428,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try { unregisterReceiver(powerReceiver) } catch (_: Exception) { }
         backgroundExecutor.shutdownNow()
         webView.destroy()
     }

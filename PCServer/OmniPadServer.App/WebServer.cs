@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -111,6 +113,32 @@ public sealed class WebServer : IAsyncDisposable
                 context.Response.StatusCode = StatusCodes.Status200OK;
                 await context.Response.WriteAsync("OK");
             }
+            else if (context.Request.Path == "/api/status")
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("{\"status\":\"ok\",\"server\":\"OmniPad\"}");
+            }
+            else if (context.Request.Path == "/api/network/info")
+            {
+                var lanIps = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(ni => ni.OperationalStatus == OperationalStatus.Up &&
+                                 ni.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                                 !ni.Description.Contains("VirtualBox", StringComparison.OrdinalIgnoreCase) &&
+                                 !ni.Description.Contains("VMware", StringComparison.OrdinalIgnoreCase) &&
+                                 !ni.Description.Contains("vEthernet", StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
+                    .Where(ua => ua.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                                 !IPAddress.IsLoopback(ua.Address) &&
+                                 !ua.Address.ToString().StartsWith("169.254.") &&
+                                 !ua.Address.ToString().StartsWith("192.168.56."))
+                    .Select(ua => ua.Address.ToString())
+                    .Distinct()
+                    .ToList();
+
+                string ipArrayJson = string.Join(",", lanIps.Select(ip => $"\"{ip}\""));
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"port\":{Protocol.DefaultWebPort},\"lanIps\":[{ipArrayJson}]}}");
+            }
             else if (context.Request.Path == "/audio")
             {
                 if (context.WebSockets.IsWebSocketRequest)
@@ -218,8 +246,16 @@ public sealed class WebServer : IAsyncDisposable
         string contentPath = webRoot ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "WebClient"));
         if (!Directory.Exists(contentPath))
         {
-            contentPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-            Directory.CreateDirectory(contentPath);
+            string siblingWebClient = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "WebClient"));
+            if (Directory.Exists(siblingWebClient))
+            {
+                contentPath = siblingWebClient;
+            }
+            else
+            {
+                contentPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+                Directory.CreateDirectory(contentPath);
+            }
         }
 
         var fileProvider = new PhysicalFileProvider(contentPath);

@@ -46,6 +46,12 @@ class TouchEngine {
         };
 
         this.onTouchpadChanged = null;
+        this.onSpecialAction = null;
+
+        // Programmable & Advanced Behaviors State
+        this.latchedButtons = new Set();
+        this.turboTimers = new Map();
+        this.holdTimers = new Map();
 
         // Keep-alive heartbeat: guarantees server connection stays active even when hands are off glass
         this.lastEmitTime = performance.now();
@@ -123,21 +129,92 @@ class TouchEngine {
         }
     }
 
-    // Attach listeners to DOM control elements
-    bindControlElement(el, type, binding) {
+    executeButtonAction(binding, isDown) {
+        if (typeof binding === 'number') {
+            this.setButton(binding, isDown);
+        } else if (typeof binding === 'string') {
+            if (binding === 'LT' || binding === 'RT') {
+                this.setTrigger(binding, isDown ? 255 : 0);
+            } else if (binding.indexOf('fn_') === 0) {
+                if (this.onSpecialAction) {
+                    this.onSpecialAction(binding, isDown);
+                }
+            } else if (binding.indexOf(',') !== -1) {
+                const parts = binding.split(',');
+                for (let i = 0; i < parts.length; i++) {
+                    const b = parseInt(parts[i].trim(), 16);
+                    if (!isNaN(b)) this.setButton(b, isDown);
+                }
+            }
+        } else if (Array.isArray(binding)) {
+            for (let i = 0; i < binding.length; i++) {
+                this.executeButtonAction(binding[i], isDown);
+            }
+        }
+    }
+
+    // Attach listeners to DOM control elements with programmable behaviors
+    bindControlElement(el, type, binding, itemData) {
+        itemData = itemData || {};
+
         el.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             el.setPointerCapture(e.pointerId);
             this.triggerHaptic(14);
 
             if (type === 'button') {
+                // 1. Toggle / Latch Mode (Tap to lock ON, tap again to unlock OFF)
+                if (itemData.behavior === 'toggle' || itemData.behavior === 'latch') {
+                    if (this.latchedButtons.has(el)) {
+                        this.latchedButtons.delete(el);
+                        el.classList.remove('active', 'latched');
+                        this.executeButtonAction(binding, false);
+                        this.triggerHaptic(10);
+                    } else {
+                        this.latchedButtons.add(el);
+                        el.classList.add('active', 'latched');
+                        this.executeButtonAction(binding, true);
+                        this.triggerHaptic(22);
+                    }
+                    return;
+                }
+
+                // 2. Turbo Mode (Continuous 20Hz rapid pulsing while held)
+                if (itemData.behavior === 'turbo') {
+                    el.classList.add('active');
+                    let turboState = true;
+                    this.executeButtonAction(binding, true);
+                    const timer = setInterval(() => {
+                        turboState = !turboState;
+                        this.executeButtonAction(binding, turboState);
+                    }, 50);
+                    this.turboTimers.set(e.pointerId, { timer, el, binding });
+                    this.activePointers.set(e.pointerId, { type, el, binding, itemData, isTurbo: true });
+                    return;
+                }
+
+                // 3. Hold-Dual Action Mode (Tap = primary, Hold > 250ms = secondary)
+                if (itemData.behavior === 'hold_dual' && itemData.secondaryBinding) {
+                    el.classList.add('active');
+                    const downTime = performance.now();
+                    const holdTimer = setTimeout(() => {
+                        this.triggerHaptic(25);
+                        this.executeButtonAction(itemData.secondaryBinding, true);
+                        el.classList.add('held-secondary');
+                    }, 250);
+                    this.holdTimers.set(e.pointerId, { holdTimer, downTime, firedSecondary: false });
+                    this.activePointers.set(e.pointerId, { type, el, binding, itemData, isHoldDual: true });
+                    return;
+                }
+
+                // 4. Standard Momentary Button
                 el.classList.add('active');
-                this.setButton(binding, true);
-                this.activePointers.set(e.pointerId, { type, el, binding });
+                this.executeButtonAction(binding, true);
+                this.activePointers.set(e.pointerId, { type, el, binding, itemData });
             } else if (type === 'trigger') {
                 el.classList.add('active');
                 this.setTrigger(binding, 255);
-                this.activePointers.set(e.pointerId, { type, el, binding });
+                this.activePointers.set(e.pointerId, { type, el, binding, itemData });
             } else if (type === 'joystick') {
                 const rect = el.getBoundingClientRect();
                 const radius = rect.width / 2;
@@ -171,8 +248,33 @@ class TouchEngine {
             this.activePointers.delete(e.pointerId);
 
             if (data.type === 'button') {
+                if (data.isTurbo && this.turboTimers.has(e.pointerId)) {
+                    const t = this.turboTimers.get(e.pointerId);
+                    clearInterval(t.timer);
+                    this.turboTimers.delete(e.pointerId);
+                    data.el.classList.remove('active');
+                    this.executeButtonAction(data.binding, false);
+                    return;
+                }
+
+                if (data.isHoldDual && this.holdTimers.has(e.pointerId)) {
+                    const h = this.holdTimers.get(e.pointerId);
+                    clearTimeout(h.holdTimer);
+                    this.holdTimers.delete(e.pointerId);
+                    data.el.classList.remove('active', 'held-secondary');
+                    const elapsed = performance.now() - h.downTime;
+                    if (elapsed >= 250) {
+                        this.executeButtonAction(data.itemData.secondaryBinding, false);
+                    } else {
+                        // Short tap: fire primary for 60ms
+                        this.executeButtonAction(data.binding, true);
+                        setTimeout(() => this.executeButtonAction(data.binding, false), 60);
+                    }
+                    return;
+                }
+
                 data.el.classList.remove('active');
-                this.setButton(data.binding, false);
+                this.executeButtonAction(data.binding, false);
             } else if (data.type === 'trigger') {
                 data.el.classList.remove('active');
                 this.setTrigger(data.binding, 0);
@@ -453,5 +555,230 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerup', handleTouchEnd);
         containerEl.addEventListener('pointercancel', handleTouchEnd);
+    }
+
+    // Steam-Controller Style Touchpad as Directional Pad (4-way / 8-way Touch Surface)
+    bindDpadTouchpad(containerEl) {
+        let activeMask = 0;
+        const quads = {
+            up: containerEl.querySelector('.tp-quad-up'),
+            down: containerEl.querySelector('.tp-quad-down'),
+            left: containerEl.querySelector('.tp-quad-left'),
+            right: containerEl.querySelector('.tp-quad-right')
+        };
+
+        const updateTouch = (e) => {
+            const rect = containerEl.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = e.clientX - cx;
+            const dy = e.clientY - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const radius = rect.width / 2;
+
+            let newMask = 0;
+            // 15% inner neutral deadzone
+            if (dist > radius * 0.15) {
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                if (angle >= -40 && angle <= 40) {
+                    newMask = this.BUTTONS.DPAD_RIGHT;
+                } else if (angle >= 50 && angle <= 130) {
+                    newMask = this.BUTTONS.DPAD_DOWN;
+                } else if (angle >= -130 && angle <= -50) {
+                    newMask = this.BUTTONS.DPAD_UP;
+                } else if (angle >= 140 || angle <= -140) {
+                    newMask = this.BUTTONS.DPAD_LEFT;
+                } else {
+                    // Diagonals
+                    if (angle > -50 && angle < -40) newMask = this.BUTTONS.DPAD_UP | this.BUTTONS.DPAD_RIGHT;
+                    else if (angle > 40 && angle < 50) newMask = this.BUTTONS.DPAD_DOWN | this.BUTTONS.DPAD_RIGHT;
+                    else if (angle > 130 && angle < 140) newMask = this.BUTTONS.DPAD_DOWN | this.BUTTONS.DPAD_LEFT;
+                    else if (angle > -140 && angle < -130) newMask = this.BUTTONS.DPAD_UP | this.BUTTONS.DPAD_LEFT;
+                }
+            }
+
+            if (newMask !== activeMask) {
+                this.state.buttons = (this.state.buttons & ~0x000F) | newMask;
+                activeMask = newMask;
+                this.emitState();
+                this.triggerHaptic(8);
+
+                // Update visual quadrant highlights
+                if (quads.up) quads.up.classList.toggle('active', (newMask & this.BUTTONS.DPAD_UP) !== 0);
+                if (quads.down) quads.down.classList.toggle('active', (newMask & this.BUTTONS.DPAD_DOWN) !== 0);
+                if (quads.left) quads.left.classList.toggle('active', (newMask & this.BUTTONS.DPAD_LEFT) !== 0);
+                if (quads.right) quads.right.classList.toggle('active', (newMask & this.BUTTONS.DPAD_RIGHT) !== 0);
+            }
+        };
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            containerEl.setPointerCapture(e.pointerId);
+            containerEl.classList.add('touch-active');
+            updateTouch(e);
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (containerEl.classList.contains('touch-active')) {
+                updateTouch(e);
+            }
+        });
+
+        const handleRelease = (e) => {
+            containerEl.classList.remove('touch-active');
+            this.state.buttons &= ~0x000F;
+            activeMask = 0;
+            this.emitState();
+            if (quads.up) quads.up.classList.remove('active');
+            if (quads.down) quads.down.classList.remove('active');
+            if (quads.left) quads.left.classList.remove('active');
+            if (quads.right) quads.right.classList.remove('active');
+        };
+
+        containerEl.addEventListener('pointerup', handleRelease);
+        containerEl.addEventListener('pointercancel', handleRelease);
+    }
+
+    // Steam-Controller Style Touchpad as Face Buttons Diamond (North=Y, East=B, South=A, West=X)
+    bindAbxyTouchpad(containerEl) {
+        let activeMask = 0;
+        const quads = {
+            y: containerEl.querySelector('.tp-abxy-y'),
+            b: containerEl.querySelector('.tp-abxy-b'),
+            a: containerEl.querySelector('.tp-abxy-a'),
+            x: containerEl.querySelector('.tp-abxy-x')
+        };
+
+        const updateTouch = (e) => {
+            const rect = containerEl.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = e.clientX - cx;
+            const dy = e.clientY - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const radius = rect.width / 2;
+
+            let newMask = 0;
+            if (dist > radius * 0.15) {
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                if (angle >= -135 && angle <= -45) {
+                    newMask = this.BUTTONS.Y;
+                } else if (angle >= -45 && angle <= 45) {
+                    newMask = this.BUTTONS.B;
+                } else if (angle >= 45 && angle <= 135) {
+                    newMask = this.BUTTONS.A;
+                } else {
+                    newMask = this.BUTTONS.X;
+                }
+            }
+
+            if (newMask !== activeMask) {
+                this.state.buttons = (this.state.buttons & ~0xF000) | newMask;
+                activeMask = newMask;
+                this.emitState();
+                this.triggerHaptic(10);
+
+                if (quads.y) quads.y.classList.toggle('active', (newMask & this.BUTTONS.Y) !== 0);
+                if (quads.b) quads.b.classList.toggle('active', (newMask & this.BUTTONS.B) !== 0);
+                if (quads.a) quads.a.classList.toggle('active', (newMask & this.BUTTONS.A) !== 0);
+                if (quads.x) quads.x.classList.toggle('active', (newMask & this.BUTTONS.X) !== 0);
+            }
+        };
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            containerEl.setPointerCapture(e.pointerId);
+            containerEl.classList.add('touch-active');
+            updateTouch(e);
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (containerEl.classList.contains('touch-active')) {
+                updateTouch(e);
+            }
+        });
+
+        const handleRelease = (e) => {
+            containerEl.classList.remove('touch-active');
+            this.state.buttons &= ~0xF000;
+            activeMask = 0;
+            this.emitState();
+            if (quads.y) quads.y.classList.remove('active');
+            if (quads.b) quads.b.classList.remove('active');
+            if (quads.a) quads.a.classList.remove('active');
+            if (quads.x) quads.x.classList.remove('active');
+        };
+
+        containerEl.addEventListener('pointerup', handleRelease);
+        containerEl.addEventListener('pointercancel', handleRelease);
+    }
+
+    // Dedicated Scroll Wheel Touchpad (Vertical & Horizontal Smooth Strip with Detent Ticks)
+    bindScrollTouchpad(containerEl, options) {
+        options = options || {};
+        let lastY = 0;
+        let lastX = 0;
+        let accumulatedY = 0;
+        let isTouching = false;
+        const tickStep = 18; // pixels per notch
+
+        const indicator = containerEl.querySelector('.scroll-knob') || containerEl.querySelector('.scroll-indicator');
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            containerEl.setPointerCapture(e.pointerId);
+            isTouching = true;
+            lastY = e.clientY;
+            lastX = e.clientX;
+            accumulatedY = 0;
+            containerEl.classList.add('scrolling');
+            this.triggerHaptic(10);
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (!isTouching) return;
+            const dy = e.clientY - lastY;
+            lastY = e.clientY;
+            accumulatedY += dy;
+
+            // Visual feedback indicator offset
+            if (indicator) {
+                const offset = Math.max(-25, Math.min(25, dy * 2));
+                indicator.style.transform = `translateY(${offset}px)`;
+            }
+
+            if (Math.abs(accumulatedY) >= tickStep) {
+                const notches = Math.trunc(accumulatedY / tickStep);
+                accumulatedY -= notches * tickStep;
+                this.triggerHaptic(6);
+
+                // Send 2-finger scroll coordinates to server TouchpadMouseEngine
+                if (this.onTouchpadChanged) {
+                    const scrollDelta = -notches * 30; // Negative dy = scroll up in Windows wheel
+                    this.onTouchpadChanged({
+                        touchCount: 2,
+                        finger0: { isActive: true, id: 0, x: 960, y: 471 },
+                        finger1: { isActive: true, id: 1, x: 960, y: 471 + scrollDelta }
+                    });
+                }
+            }
+        });
+
+        const handleRelease = (e) => {
+            if (!isTouching) return;
+            isTouching = false;
+            containerEl.classList.remove('scrolling');
+            if (indicator) indicator.style.transform = 'translateY(0px)';
+            if (this.onTouchpadChanged) {
+                this.onTouchpadChanged({
+                    touchCount: 0,
+                    finger0: { isActive: false, id: 0, x: 0, y: 0 },
+                    finger1: { isActive: false, id: 1, x: 0, y: 0 }
+                });
+            }
+        };
+
+        containerEl.addEventListener('pointerup', handleRelease);
+        containerEl.addEventListener('pointercancel', handleRelease);
     }
 }

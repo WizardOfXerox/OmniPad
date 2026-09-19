@@ -24,53 +24,97 @@ html, body {
     color: #eee;
 }
 
-/* --- THEMES --- */
-body.theme-stealth {
+/* --- THEMES & CSS DESIGN VARIABLES --- */
+:root {
     --bg-color: #000000;
     --panel-bg: rgba(18, 18, 18, 0.7);
     --accent: #00ff88;
-    --btn-bg: #141414;
-    --btn-border: #282828;
-    --btn-text: #fff;
+    --accent-glow: rgba(0, 255, 136, 0.4);
+    --btn-bg: radial-gradient(circle at 35% 35%, #2a2a2a 0%, #141414 70%, #0d0d0d 100%);
+    --btn-border: rgba(255, 255, 255, 0.16);
+    --btn-radius: 50%;
+    --btn-text: #ffffff;
     --btn-active: #00ff88;
-    --stick-base: #101010;
-    --stick-knob: #222222;
+    --stick-base: radial-gradient(circle, #181818 0%, #0c0c0c 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #333333 0%, #1a1a1a 100%);
+}
+
+body.theme-stealth {
+    --bg-color: #000000;
+    --panel-bg: rgba(18, 18, 18, 0.85);
+    --accent: #00ff88;
+    --accent-glow: rgba(0, 255, 136, 0.4);
+    --btn-bg: radial-gradient(circle at 35% 35%, #242424 0%, #121212 70%, #080808 100%);
+    --btn-border: rgba(255, 255, 255, 0.18);
+    --btn-text: #ffffff;
+    --btn-active: #00ff88;
+    --stick-base: radial-gradient(circle, #151515 0%, #080808 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #2e2e2e 0%, #161616 100%);
 }
 
 body.theme-neon {
-    --bg-color: #05050f;
-    --panel-bg: rgba(15, 10, 30, 0.7);
+    --bg-color: #050512;
+    --panel-bg: rgba(15, 10, 32, 0.85);
     --accent: #00f0ff;
-    --btn-bg: #100a20;
+    --accent-glow: rgba(0, 240, 255, 0.5);
+    --btn-bg: radial-gradient(circle at 35% 35%, #24143a 0%, #100a20 70%, #070410 100%);
     --btn-border: #ff0077;
     --btn-text: #00f0ff;
     --btn-active: #ff0077;
-    --stick-base: #0f0820;
-    --stick-knob: #00f0ff;
+    --stick-base: radial-gradient(circle, #1a0f30 0%, #080314 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #ff0077 0%, #880040 100%);
 }
 
 body.theme-xbox {
-    --bg-color: #0d0d0d;
-    --panel-bg: rgba(20, 20, 20, 0.7);
+    --bg-color: #0a0e0a;
+    --panel-bg: rgba(18, 24, 18, 0.85);
     --accent: #107c10;
-    --btn-bg: #1f1f1f;
-    --btn-border: #333333;
+    --accent-glow: rgba(16, 124, 16, 0.5);
+    --btn-bg: radial-gradient(circle at 35% 35%, #222c22 0%, #141a14 70%, #0a0e0a 100%);
+    --btn-border: rgba(16, 124, 16, 0.4);
     --btn-text: #ffffff;
     --btn-active: #107c10;
-    --stick-base: #171717;
-    --stick-knob: #2a2a2a;
+    --stick-base: radial-gradient(circle, #182018 0%, #0a0d0a 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #2d382d 0%, #161c16 100%);
 }
 
 body.theme-playstation {
-    --bg-color: #0a0e1a;
-    --panel-bg: rgba(12, 18, 32, 0.7);
-    --accent: #00439c;
-    --btn-bg: #121a2c;
-    --btn-border: #22304d;
+    --bg-color: #080c18;
+    --panel-bg: rgba(12, 20, 36, 0.85);
+    --accent: #0070d1;
+    --accent-glow: rgba(0, 112, 209, 0.5);
+    --btn-bg: radial-gradient(circle at 35% 35%, #18243c 0%, #101626 70%, #080b14 100%);
+    --btn-border: rgba(0, 112, 209, 0.4);
     --btn-text: #ffffff;
     --btn-active: #0070d1;
-    --stick-base: #141d30;
-    --stick-knob: #1f2c47;
+    --stick-base: radial-gradient(circle, #121a2c 0%, #070a12 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #1e2c48 0%, #0f1624 100%);
+}
+
+body.theme-retro-gb {
+    --bg-color: #c4beaa;
+    --panel-bg: rgba(160, 155, 140, 0.9);
+    --accent: #8b1d3f;
+    --accent-glow: rgba(139, 29, 63, 0.4);
+    --btn-bg: radial-gradient(circle at 35% 35%, #aa254d 0%, #8b1d3f 70%, #5e1028 100%);
+    --btn-border: rgba(60, 10, 24, 0.6);
+    --btn-text: #ffffff;
+    --btn-active: #d6336c;
+    --stick-base: radial-gradient(circle, #858072 0%, #5a574d 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #555 0%, #2b2b2b 100%);
+}
+
+body.theme-atomic-purple {
+    --bg-color: #1a0933;
+    --panel-bg: rgba(48, 18, 90, 0.85);
+    --accent: #c77dff;
+    --accent-glow: rgba(199, 125, 255, 0.5);
+    --btn-bg: radial-gradient(circle at 35% 35%, #4a1575 0%, #2e084d 70%, #180329 100%);
+    --btn-border: rgba(199, 125, 255, 0.4);
+    --btn-text: #f0e6ff;
+    --btn-active: #c77dff;
+    --stick-base: radial-gradient(circle, #2d0b47 0%, #140224 100%);
+    --stick-knob: radial-gradient(circle at 35% 35%, #5c1b91 0%, #2a0845 100%);
 }
 
 body {
@@ -349,9 +393,9 @@ body.toolbar-open .hud-toggle-icon {
 
 /* Face Buttons */
 .game-btn {
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #2a2a2a 0%, #141414 70%, #0d0d0d 100%);
-    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-radius: var(--btn-radius, 50%);
+    background: var(--btn-bg);
+    border: 2px solid var(--btn-border);
     color: var(--btn-text);
     font-weight: 800;
     font-size: 24px;
@@ -367,6 +411,7 @@ body.toolbar-open .hud-toggle-icon {
 
 .game-btn.active, .game-btn:active {
     opacity: 0.92;
+    box-shadow: 0 0 20px var(--accent);
 }
 
 /* Pill Button for Select, Start, Options, Share, Handbrake, Macros */
@@ -820,6 +865,205 @@ body.toolbar-open .hud-toggle-icon {
     border-radius: 16px;
 }
 
+/* Rear Grip Paddle Button */
+.paddle-btn {
+    border-radius: 14px !important;
+    background: linear-gradient(135deg, #2a2a2a 0%, #141414 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.25) !important;
+    color: #eee !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.paddle-btn.active, .paddle-btn:active {
+    background: var(--accent) !important;
+    color: #000 !important;
+    box-shadow: 0 0 20px var(--accent) !important;
+}
+
+/* Toggle / Latch Button with Illuminated Active State */
+.toggle-btn {
+    position: relative;
+}
+.toggle-btn.latched {
+    background: var(--accent) !important;
+    color: #000 !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 0 24px var(--accent), inset 0 0 8px rgba(255, 255, 255, 0.6) !important;
+}
+.toggle-btn.latched::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 8px #ffffff;
+}
+
+/* Turbo Rapid-Fire Indicator */
+.turbo-btn::before {
+    content: '⚡';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: #ffaa00;
+}
+
+/* Steam-Deck Style D-Pad Trackpad */
+.touchpad-dpad-surface {
+    border-radius: 50% !important;
+    background: radial-gradient(circle, #1c1c24 0%, #0d0d12 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5) !important;
+    overflow: hidden;
+    position: relative;
+}
+.tp-dpad-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
+    justify-items: center;
+}
+.tp-dpad-sector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.08s ease;
+    width: 100%;
+    height: 100%;
+}
+.tp-quad-up { grid-column: 2; grid-row: 1; }
+.tp-quad-left { grid-column: 1; grid-row: 2; }
+.tp-dpad-center {
+    grid-column: 2; grid-row: 2;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+.tp-quad-right { grid-column: 3; grid-row: 2; }
+.tp-quad-down { grid-column: 2; grid-row: 3; }
+.tp-dpad-sector.active {
+    background: rgba(0, 255, 136, 0.25);
+    color: var(--accent);
+    font-size: 20px;
+    text-shadow: 0 0 10px var(--accent);
+}
+
+/* Steam-Deck Style ABXY Diamond Trackpad */
+.touchpad-abxy-surface {
+    border-radius: 50% !important;
+    background: radial-gradient(circle, #1c1c24 0%, #0d0d12 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5) !important;
+    overflow: hidden;
+    position: relative;
+}
+.tp-abxy-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
+    justify-items: center;
+}
+.tp-abxy-sector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 800;
+    transition: all 0.08s ease;
+    width: 100%;
+    height: 100%;
+}
+.tp-abxy-y { grid-column: 2; grid-row: 1; color: #ffcc00; }
+.tp-abxy-x { grid-column: 1; grid-row: 2; color: #00ccff; }
+.tp-abxy-center {
+    grid-column: 2; grid-row: 2;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+.tp-abxy-b { grid-column: 3; grid-row: 2; color: #ff3344; }
+.tp-abxy-a { grid-column: 2; grid-row: 3; color: #00ff88; }
+.tp-abxy-sector.active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.15);
+    text-shadow: 0 0 12px currentColor;
+}
+
+/* Dedicated Scroll Wheel Touchpad */
+.touchpad-scroll-surface {
+    border-radius: 18px !important;
+    background: linear-gradient(to bottom, #18181f 0%, #0d0d12 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7), inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.scroll-track {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    position: relative;
+}
+.scroll-arrow {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+}
+.scroll-grooves {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 60%;
+    align-items: center;
+}
+.scroll-grooves .groove {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+}
+.scroll-indicator {
+    position: absolute;
+    width: 75%;
+    height: 24px;
+    background: rgba(0, 255, 136, 0.2);
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    top: calc(50% - 12px);
+    transition: transform 0.05s ease, opacity 0.1s ease;
+    opacity: 0.6;
+}
+.touchpad-scroll-surface.scrolling .scroll-indicator {
+    opacity: 1;
+    box-shadow: 0 0 14px var(--accent);
+}
+
 /* Edit Mode Styling */
 body.editing .control-elem {
     outline: 2px dashed #00ff88;
@@ -925,7 +1169,12 @@ body.editing .control-elem.selected {
 /* Modals */
 .modal {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.82);
     display: flex;
     align-items: center;
@@ -940,7 +1189,12 @@ body.editing .control-elem.selected {
 
 .modal-backdrop {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
     z-index: 1;
     background: transparent;
     cursor: pointer;
@@ -1736,4 +1990,132 @@ body.modal-open #top-bar {
     background: #00ff88;
     box-shadow: 0 0 10px #00ff88;
 }
+
+/* ==========================================================================
+   CSS STUDIO, MODALS & BUTTON INSPECTOR STYLES
+   ========================================================================== */
+
+.code-editor {
+    width: 100%;
+    height: 140px;
+    background: #0b0d11;
+    color: #00ff88;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: Consolas, Monaco, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    resize: vertical;
+    box-sizing: border-box;
+    white-space: pre;
+    tab-size: 2;
+    touch-action: auto !important;
+}
+.code-editor:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.code-badge {
+    background: rgba(0, 255, 136, 0.12);
+    color: var(--accent);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+}
+
+.color-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.color-picker-input {
+    width: 44px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.profile-catalog-list {
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.profile-item-name {
+    font-weight: 600;
+    color: #eee;
+}
+
+.profile-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.profile-btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+}
+.profile-btn-sm:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+.profile-btn-sm.btn-del {
+    color: #ff5555;
+    border-color: rgba(255, 85, 85, 0.3);
+}
+
+.import-export-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.import-export-footer,
+.inspector-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.setting-group-row {
+    display: flex;
+    gap: 12px;
+}
+.setting-col {
+    flex: 1;
+}
+.setting-col input {
+    width: 100%;
+}
+
 

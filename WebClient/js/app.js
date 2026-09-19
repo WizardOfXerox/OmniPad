@@ -17,6 +17,16 @@ class OmniPadApp {
         this.audio = new AudioEngine();
         this.touch = new TouchEngine((state) => this.network.sendInput(state));
         this.touch.onTouchpadChanged = (tpState) => this.network.sendTouchpad(tpState);
+        this.touch.onSpecialAction = (action, isDown) => {
+            if (action === 'fn_mute' && isDown) {
+                this.audio.toggle();
+            } else if (action === 'fn_recenter' && isDown && this.gyro) {
+                this.gyro.calibrateZero();
+                this.showToast('Gyro Aim Re-centered');
+            } else if (action === 'fn_turbo_toggle' && isDown) {
+                this.showToast('Turbo Mode Toggled');
+            }
+        };
         this.gyro = new GyroEngine(this.touch, this.network);
         this.macros = new MacroEngine(this.touch);
         this.customizer = new LayoutCustomizer(this);
@@ -68,6 +78,14 @@ class OmniPadApp {
 
         this.network.onSwapDeclined = (targetSlot) => {
             this.showToast(`Player ${targetSlot + 1} declined the swap request.`);
+        };
+
+        this.network.onTransportChange = (transport, host) => {
+            if (transport === 'wired') {
+                this.showToast('⚡ Connected via Ultra-Low Latency USB');
+            } else if (transport === 'wifi') {
+                this.showToast(`⚡ Switched to WiFi LAN (${host})`);
+            }
         };
 
         this.network.onProfileChange = (profileName) => {
@@ -291,6 +309,10 @@ class OmniPadApp {
             if (settingsModal) settingsModal.classList.add('hidden');
             document.body.classList.remove('modal-open');
         });
+        on('backdrop-settings', 'click', () => {
+            if (settingsModal) settingsModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        });
 
         // Modal Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -303,10 +325,10 @@ class OmniPadApp {
             });
         });
 
-        // Settings Controls
-        on('setting-theme', 'change', (e) => {
-            document.body.className = e.target.value;
-        });
+        // Theme & CSS Studio, Import/Export, and Custom Presets
+        this.initDesignStudio();
+        this.initImportExportSystem();
+        this.initCustomPresets();
 
         // Controller Global Scale Slider
         const scaleSlider = document.getElementById('setting-controller-scale');
@@ -371,13 +393,201 @@ class OmniPadApp {
             alert(granted ? 'Motion sensors initialized!' : 'Permission denied or sensors unavailable.');
         });
 
-        // Profile Export/Import
+    }
+
+    initDesignStudio() {
+        const on = (id, evt, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(evt, fn);
+        };
+
+        const themeDropdown = document.getElementById('setting-theme');
+        const studioThemeSelect = document.getElementById('studio-theme-select');
+
+        const syncTheme = (themeClass) => {
+            document.body.className = themeClass;
+            if (themeDropdown) themeDropdown.value = themeClass;
+            if (studioThemeSelect) studioThemeSelect.value = themeClass;
+            localStorage.setItem('omnipad_theme', themeClass);
+        };
+
+        if (themeDropdown) themeDropdown.addEventListener('change', (e) => syncTheme(e.target.value));
+        if (studioThemeSelect) studioThemeSelect.addEventListener('change', (e) => syncTheme(e.target.value));
+
+        // Visual Sliders & Pickers
+        const accentInput = document.getElementById('studio-accent-color');
+        const accentVal = document.getElementById('val-studio-accent');
+        const radiusSlider = document.getElementById('studio-radius-slider');
+        const radiusVal = document.getElementById('val-studio-radius');
+        const btnBgInput = document.getElementById('studio-btn-bg-color');
+        const btnBgVal = document.getElementById('val-studio-btn-bg');
+        const btnTextInput = document.getElementById('studio-btn-text-color');
+        const btnTextVal = document.getElementById('val-studio-btn-text');
+
+        const updateCssVar = (name, val) => {
+            document.documentElement.style.setProperty(name, val);
+            const vars = this.getSavedCssVars();
+            vars[name] = val;
+            localStorage.setItem('omnipad_css_vars', JSON.stringify(vars));
+        };
+
+        if (accentInput) {
+            accentInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (accentVal) accentVal.textContent = val;
+                updateCssVar('--accent', val);
+                updateCssVar('--accent-glow', val + '66');
+            });
+        }
+
+        if (radiusSlider) {
+            radiusSlider.addEventListener('input', (e) => {
+                const px = parseInt(e.target.value, 10);
+                const radStr = px >= 35 ? '50%' : px + 'px';
+                if (radiusVal) radiusVal.textContent = radStr;
+                updateCssVar('--btn-radius', radStr);
+            });
+        }
+
+        if (btnBgInput) {
+            btnBgInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (btnBgVal) btnBgVal.textContent = val;
+                updateCssVar('--btn-bg', val);
+            });
+        }
+
+        if (btnTextInput) {
+            btnTextInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (btnTextVal) btnTextVal.textContent = val;
+                updateCssVar('--btn-text', val);
+            });
+        }
+
+        // Live Custom CSS Editor
+        const cssEditor = document.getElementById('custom-css-editor');
+        const customStyleEl = document.getElementById('omnipad-user-custom-css');
+        const savedCss = localStorage.getItem('omnipad_custom_css') || '';
+        if (cssEditor) cssEditor.value = savedCss;
+        if (customStyleEl) customStyleEl.textContent = savedCss;
+
+        on('btn-apply-custom-css', 'click', () => {
+            if (cssEditor && customStyleEl) {
+                const code = cssEditor.value;
+                customStyleEl.textContent = code;
+                localStorage.setItem('omnipad_custom_css', code);
+                this.showToast('Custom CSS Applied & Saved');
+            }
+        });
+
+        on('btn-reset-custom-css', 'click', () => {
+            if (confirm('Reset custom CSS rules to default?')) {
+                if (cssEditor) cssEditor.value = '';
+                if (customStyleEl) customStyleEl.textContent = '';
+                localStorage.removeItem('omnipad_custom_css');
+                this.showToast('Custom CSS Reset');
+            }
+        });
+
+        // Load saved theme and CSS vars on startup
+        this.loadSavedThemeAndCss();
+    }
+
+    getSavedCssVars() {
+        try {
+            const raw = localStorage.getItem('omnipad_css_vars');
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    loadSavedThemeAndCss() {
+        const savedTheme = localStorage.getItem('omnipad_theme') || 'theme-stealth';
+        document.body.className = savedTheme;
+        const themeDropdown = document.getElementById('setting-theme');
+        const studioThemeSelect = document.getElementById('studio-theme-select');
+        if (themeDropdown) themeDropdown.value = savedTheme;
+        if (studioThemeSelect) studioThemeSelect.value = savedTheme;
+
+        const cssVars = this.getSavedCssVars();
+        for (const k of Object.keys(cssVars)) {
+            document.documentElement.style.setProperty(k, cssVars[k]);
+        }
+
+        const savedCss = localStorage.getItem('omnipad_custom_css');
+        if (savedCss) {
+            const styleEl = document.getElementById('omnipad-user-custom-css');
+            if (styleEl) styleEl.textContent = savedCss;
+            const editor = document.getElementById('custom-css-editor');
+            if (editor) editor.value = savedCss;
+        }
+    }
+
+    initImportExportSystem() {
+        const on = (id, evt, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(evt, fn);
+        };
+
+        const modal = document.getElementById('modal-import-export');
+        const closeModal = () => {
+            if (modal) modal.classList.add('hidden');
+            const playerSwitch = document.getElementById('modal-player-switch');
+            const settings = document.getElementById('settings-modal');
+            if ((!playerSwitch || playerSwitch.classList.contains('hidden')) &&
+                (!settings || settings.classList.contains('hidden'))) {
+                document.body.classList.remove('modal-open');
+            }
+        };
+
+        on('btn-close-import-export', 'click', closeModal);
+        on('backdrop-import-export', 'click', closeModal);
+
+        on('btn-modal-download-json', 'click', () => {
+            this.exportPresetDownload();
+        });
+
+        on('btn-modal-copy-json', 'click', () => {
+            this.exportPresetToClipboard();
+        });
+
+        const modalFileInput = document.getElementById('modal-file-upload');
+        on('btn-modal-trigger-upload', 'click', () => {
+            if (modalFileInput) modalFileInput.click();
+        });
+        if (modalFileInput) {
+            modalFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        this.importProfileData(event.target.result);
+                        closeModal();
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        on('btn-modal-apply-import', 'click', () => {
+            const textarea = document.getElementById('import-export-textarea');
+            if (textarea && textarea.value.trim()) {
+                const success = this.importProfileData(textarea.value.trim());
+                if (success) closeModal();
+            } else {
+                alert('Please paste a preset JSON string first.');
+            }
+        });
+
+        // Tab-profiles export & import buttons
         on('btn-export-profile', 'click', () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.currentLayout, null, 2));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", `OmniPad_${this.currentPresetKey}.json`);
-            dl.click();
+            this.exportPresetDownload();
+        });
+
+        on('btn-copy-profile-clipboard', 'click', () => {
+            this.exportPresetToClipboard();
         });
 
         const fileInput = document.getElementById('file-import-profile');
@@ -390,19 +600,297 @@ class OmniPadApp {
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        try {
-                            this.currentLayout = JSON.parse(event.target.result);
-                            this.saveCurrentProfile();
-                            this.renderLayout();
-                            alert('Profile imported successfully!');
-                        } catch (err) {
-                            alert('Invalid profile JSON file.');
-                        }
+                        this.importProfileData(event.target.result);
                     };
                     reader.readAsText(file);
                 }
             });
         }
+
+        on('btn-open-paste-modal', 'click', () => {
+            this.openImportExportModal('import');
+        });
+    }
+
+    openImportExportModal(mode) {
+        const modal = document.getElementById('modal-import-export');
+        const textarea = document.getElementById('import-export-textarea');
+        if (!modal) return;
+
+        if (mode === 'export') {
+            const bundle = {
+                version: 2,
+                name: this.currentPresetKey,
+                layout: this.currentLayout,
+                theme: document.body.className || 'theme-stealth',
+                cssVars: this.getSavedCssVars(),
+                customCss: localStorage.getItem('omnipad_custom_css') || ''
+            };
+            if (textarea) textarea.value = JSON.stringify(bundle, null, 2);
+        } else {
+            if (textarea) textarea.value = '';
+        }
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    exportPresetDownload() {
+        const bundle = {
+            version: 2,
+            name: this.currentPresetKey,
+            layout: this.currentLayout,
+            theme: document.body.className || 'theme-stealth',
+            cssVars: this.getSavedCssVars(),
+            customCss: localStorage.getItem('omnipad_custom_css') || ''
+        };
+        const jsonStr = JSON.stringify(bundle, null, 2);
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
+        const dl = document.createElement('a');
+        dl.setAttribute("href", dataStr);
+        dl.setAttribute("download", `OmniPad_${this.currentPresetKey}.json`);
+        document.body.appendChild(dl);
+        dl.click();
+        document.body.removeChild(dl);
+        this.showToast(`Preset Downloaded: OmniPad_${this.currentPresetKey}.json`);
+    }
+
+    exportPresetToClipboard() {
+        const bundle = {
+            version: 2,
+            name: this.currentPresetKey,
+            layout: this.currentLayout,
+            theme: document.body.className || 'theme-stealth',
+            cssVars: this.getSavedCssVars(),
+            customCss: localStorage.getItem('omnipad_custom_css') || ''
+        };
+        const jsonStr = JSON.stringify(bundle, null, 2);
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                this.showToast('📋 Preset JSON copied to clipboard!');
+            }).catch(() => {
+                this.fallbackCopyToClipboard(jsonStr);
+            });
+        } else {
+            this.fallbackCopyToClipboard(jsonStr);
+        }
+    }
+
+    fallbackCopyToClipboard(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            this.showToast('📋 Preset JSON copied to clipboard!');
+        } catch (e) {
+            alert('Could not auto-copy. Please use Export dialog to copy manually.');
+        }
+        document.body.removeChild(ta);
+    }
+
+    importProfileData(jsonString) {
+        try {
+            const data = JSON.parse(jsonString);
+            let layoutToImport = null;
+            let themeToImport = null;
+            let varsToImport = null;
+            let cssToImport = null;
+            let nameToImport = 'imported_' + Date.now();
+
+            if (Array.isArray(data)) {
+                layoutToImport = data;
+            } else if (typeof data === 'object' && data !== null && Array.isArray(data.layout)) {
+                layoutToImport = data.layout;
+                if (data.name) nameToImport = data.name;
+                if (data.theme) themeToImport = data.theme;
+                if (data.cssVars) varsToImport = data.cssVars;
+                if (data.customCss !== undefined) cssToImport = data.customCss;
+            } else {
+                alert('Invalid preset JSON format.');
+                return false;
+            }
+
+            this.currentLayout = layoutToImport;
+
+            if (themeToImport) {
+                document.body.className = themeToImport;
+                localStorage.setItem('omnipad_theme', themeToImport);
+            }
+            if (varsToImport) {
+                localStorage.setItem('omnipad_css_vars', JSON.stringify(varsToImport));
+                for (const k of Object.keys(varsToImport)) {
+                    document.documentElement.style.setProperty(k, varsToImport[k]);
+                }
+            }
+            if (cssToImport !== null && cssToImport !== undefined) {
+                localStorage.setItem('omnipad_custom_css', cssToImport);
+                const styleEl = document.getElementById('omnipad-user-custom-css');
+                if (styleEl) styleEl.textContent = cssToImport;
+                const editor = document.getElementById('custom-css-editor');
+                if (editor) editor.value = cssToImport;
+            }
+
+            this.saveCurrentProfile();
+            this.renderLayout();
+            this.showToast('Preset imported successfully!');
+            return true;
+        } catch (err) {
+            alert('Failed to parse JSON file: ' + err.message);
+            return false;
+        }
+    }
+
+    getCustomPresets() {
+        try {
+            const raw = localStorage.getItem('omnipad_custom_presets');
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    saveCustomPresetsDict(dict) {
+        localStorage.setItem('omnipad_custom_presets', JSON.stringify(dict));
+    }
+
+    initCustomPresets() {
+        this.populateCustomPresetSelector();
+        this.renderCustomPresetsCatalog();
+    }
+
+    populateCustomPresetSelector() {
+        const optgroup = document.getElementById('optgroup-custom-presets');
+        if (!optgroup) return;
+
+        optgroup.innerHTML = '';
+        const presets = this.getCustomPresets();
+        const keys = Object.keys(presets);
+
+        keys.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = presets[k].title || k;
+            optgroup.appendChild(opt);
+        });
+
+        if (keys.length === 0) {
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.disabled = true;
+            emptyOpt.textContent = '(No custom presets saved)';
+            optgroup.appendChild(emptyOpt);
+        }
+    }
+
+    renderCustomPresetsCatalog() {
+        const container = document.getElementById('custom-presets-list');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const presets = this.getCustomPresets();
+        const keys = Object.keys(presets);
+
+        if (keys.length === 0) {
+            container.innerHTML = '<div style="color: #888; font-size: 12px; padding: 12px 0;">No custom presets saved yet. Use "Save As..." in editor toolbar or Import to add one.</div>';
+            return;
+        }
+
+        keys.forEach(k => {
+            const item = presets[k];
+            const div = document.createElement('div');
+            div.className = 'profile-item';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'profile-item-name';
+            nameSpan.textContent = item.title || k;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'profile-item-actions';
+
+            const btnLoad = document.createElement('button');
+            btnLoad.className = 'profile-btn-sm';
+            btnLoad.textContent = 'Load';
+            btnLoad.onclick = () => {
+                this.currentPresetKey = k;
+                if (this.presetSelector) this.presetSelector.value = k;
+                this.loadProfile(k);
+                const settingsModal = document.getElementById('settings-modal');
+                if (settingsModal) settingsModal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                this.showToast('Loaded preset: ' + (item.title || k));
+            };
+
+            const btnExport = document.createElement('button');
+            btnExport.className = 'profile-btn-sm';
+            btnExport.textContent = 'Export';
+            btnExport.onclick = () => {
+                this.currentPresetKey = k;
+                this.loadProfile(k);
+                this.exportPresetDownload();
+            };
+
+            const btnDelete = document.createElement('button');
+            btnDelete.className = 'profile-btn-sm btn-del';
+            btnDelete.textContent = 'Delete';
+            btnDelete.onclick = () => {
+                if (confirm(`Delete preset "${item.title || k}"?`)) {
+                    const dict = this.getCustomPresets();
+                    delete dict[k];
+                    this.saveCustomPresetsDict(dict);
+                    localStorage.removeItem(`omnipad_layout_${k}`);
+                    this.populateCustomPresetSelector();
+                    this.renderCustomPresetsCatalog();
+                    if (this.currentPresetKey === k) {
+                        this.currentPresetKey = 'xbox';
+                        if (this.presetSelector) this.presetSelector.value = 'xbox';
+                        this.loadProfile('xbox');
+                    }
+                    this.showToast('Preset deleted');
+                }
+            };
+
+            actionsDiv.appendChild(btnLoad);
+            actionsDiv.appendChild(btnExport);
+            actionsDiv.appendChild(btnDelete);
+
+            div.appendChild(nameSpan);
+            div.appendChild(actionsDiv);
+            container.appendChild(div);
+        });
+    }
+
+    saveAsNewProfile() {
+        const name = prompt('Enter a name for your new custom preset:', 'My Custom Layout');
+        if (!name || !name.trim()) return;
+
+        const cleanName = name.trim();
+        const key = 'custom_' + cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString(36);
+
+        const dict = this.getCustomPresets();
+        dict[key] = {
+            title: cleanName,
+            key: key,
+            created: Date.now(),
+            theme: document.body.className || 'theme-stealth',
+            cssVars: this.getSavedCssVars(),
+            customCss: localStorage.getItem('omnipad_custom_css') || '',
+            layout: JSON.parse(JSON.stringify(this.currentLayout))
+        };
+
+        this.saveCustomPresetsDict(dict);
+        localStorage.setItem(`omnipad_layout_${key}`, JSON.stringify(this.currentLayout));
+
+        this.populateCustomPresetSelector();
+        this.renderCustomPresetsCatalog();
+
+        this.currentPresetKey = key;
+        if (this.presetSelector) this.presetSelector.value = key;
+        this.showToast('Created custom preset: ' + cleanName);
     }
 
     loadProfile(key) {
@@ -413,6 +901,27 @@ class OmniPadApp {
                 localStorage.removeItem(`omnipad_layout_${k}`);
             }
             localStorage.setItem('omnipad_version', PRESET_VERSION);
+        }
+
+        // Check if loading a user custom preset
+        const customPresets = this.getCustomPresets();
+        if (customPresets[key]) {
+            const customItem = customPresets[key];
+            if (customItem.theme) {
+                document.body.className = customItem.theme;
+            }
+            if (customItem.cssVars) {
+                for (const v of Object.keys(customItem.cssVars)) {
+                    document.documentElement.style.setProperty(v, customItem.cssVars[v]);
+                }
+            }
+            if (customItem.customCss !== undefined) {
+                const styleEl = document.getElementById('omnipad-user-custom-css');
+                if (styleEl) styleEl.textContent = customItem.customCss;
+            }
+            this.currentLayout = JSON.parse(JSON.stringify(customItem.layout));
+            this.renderLayout();
+            return;
         }
 
         const saved = localStorage.getItem(`omnipad_layout_${key}`);
@@ -430,10 +939,27 @@ class OmniPadApp {
     }
 
     saveCurrentProfile() {
+        const customPresets = this.getCustomPresets();
+        if (customPresets[this.currentPresetKey]) {
+            customPresets[this.currentPresetKey].layout = JSON.parse(JSON.stringify(this.currentLayout));
+            customPresets[this.currentPresetKey].theme = document.body.className;
+            customPresets[this.currentPresetKey].cssVars = this.getSavedCssVars();
+            customPresets[this.currentPresetKey].customCss = localStorage.getItem('omnipad_custom_css') || '';
+            this.saveCustomPresetsDict(customPresets);
+        }
         localStorage.setItem(`omnipad_layout_${this.currentPresetKey}`, JSON.stringify(this.currentLayout));
     }
 
     resetCurrentProfile() {
+        const customPresets = this.getCustomPresets();
+        if (customPresets[this.currentPresetKey]) {
+            delete customPresets[this.currentPresetKey];
+            this.saveCustomPresetsDict(customPresets);
+            this.populateCustomPresetSelector();
+            this.renderCustomPresetsCatalog();
+            this.currentPresetKey = 'xbox';
+            if (this.presetSelector) this.presetSelector.value = 'xbox';
+        }
         localStorage.removeItem(`omnipad_layout_${this.currentPresetKey}`);
         this.loadProfile(this.currentPresetKey);
     }
@@ -470,11 +996,21 @@ class OmniPadApp {
                 el.appendChild(knob);
                 this.touch.bindControlElement(el, 'joystick', item.binding);
             }
-            // 2. Standard Button (Face, Shoulder, System, Pill, Key, Action)
+            // 2. Standard Button (Face, Shoulder, Paddle, System, Pill, Key, Action)
             else if (item.type === 'button') {
+                if (item.behavior === 'toggle' || item.behavior === 'latch') {
+                    el.classList.add('toggle-btn');
+                    if (this.touch.latchedButtons.has(el)) el.classList.add('latched', 'active');
+                } else if (item.behavior === 'turbo') {
+                    el.classList.add('turbo-btn');
+                }
+
                 if (item.shape === 'shoulder') {
                     el.classList.add('shoulder-btn');
                     el.textContent = item.label || '';
+                } else if (item.shape === 'paddle') {
+                    el.classList.add('paddle-btn');
+                    el.textContent = item.label || 'P';
                 } else if (item.shape === 'pill') {
                     el.classList.add('pill-btn');
                     el.textContent = item.label || '';
@@ -501,7 +1037,7 @@ class OmniPadApp {
                     }
                     el.textContent = item.label || '';
                 }
-                this.touch.bindControlElement(el, 'button', item.binding);
+                this.touch.bindControlElement(el, 'button', item.binding, item);
             }
             // 3. Trigger
             else if (item.type === 'trigger') {
@@ -616,6 +1152,56 @@ class OmniPadApp {
             else if (item.type === 'trackpad_mouse') {
                 el.classList.add('trackpad-surface');
                 this.touch.bindTouchpadElement(el);
+            }
+            // 8c. Steam-Deck Style D-Pad Trackpad
+            else if (item.type === 'touchpad_dpad') {
+                el.classList.add('trackpad-surface', 'touchpad-dpad-surface');
+                el.innerHTML = `
+                    <div class="tp-dpad-grid">
+                        <div class="tp-dpad-sector tp-quad-up">▲</div>
+                        <div class="tp-dpad-sector tp-quad-left">◀</div>
+                        <div class="tp-dpad-center"></div>
+                        <div class="tp-dpad-sector tp-quad-right">▶</div>
+                        <div class="tp-dpad-sector tp-quad-down">▼</div>
+                    </div>
+                    <div class="touchpad-label">${item.label || 'TOUCHPAD D-PAD'}</div>
+                `;
+                this.touch.bindDpadTouchpad(el);
+            }
+            // 8d. Steam-Deck Style ABXY Diamond Trackpad
+            else if (item.type === 'touchpad_abxy') {
+                el.classList.add('trackpad-surface', 'touchpad-abxy-surface');
+                el.innerHTML = `
+                    <div class="tp-abxy-grid">
+                        <div class="tp-abxy-sector tp-abxy-y">Y</div>
+                        <div class="tp-abxy-sector tp-abxy-x">X</div>
+                        <div class="tp-abxy-center"></div>
+                        <div class="tp-abxy-sector tp-abxy-b">B</div>
+                        <div class="tp-abxy-sector tp-abxy-a">A</div>
+                    </div>
+                    <div class="touchpad-label">${item.label || 'TOUCHPAD ABXY'}</div>
+                `;
+                this.touch.bindAbxyTouchpad(el);
+            }
+            // 8e. Dedicated Scroll Wheel Touchpad
+            else if (item.type === 'touchpad_scroll') {
+                el.classList.add('touchpad-surface', 'touchpad-scroll-surface');
+                el.innerHTML = `
+                    <div class="scroll-track">
+                        <div class="scroll-arrow scroll-arrow-up">▲</div>
+                        <div class="scroll-grooves">
+                            <span class="groove"></span>
+                            <span class="groove"></span>
+                            <span class="groove"></span>
+                            <span class="groove"></span>
+                            <span class="groove"></span>
+                        </div>
+                        <div class="scroll-indicator"></div>
+                        <div class="scroll-arrow scroll-arrow-down">▼</div>
+                    </div>
+                    <div class="touchpad-label">${item.label || 'SCROLL'}</div>
+                `;
+                this.touch.bindScrollTouchpad(el, item);
             }
             // 9. FPS Aim Trackpad
             else if (item.type === 'trackpad_aim') {

@@ -15,6 +15,19 @@ class NetworkClient {
         this.onSwapDeclined = null;
         this.onSlotChanged = null;
         this.onProfileChange = null;
+        this.onTransportChange = null;
+
+        // Multi-transport auto-failover state
+        this.currentTransport = 'unknown'; // 'wired' or 'wifi'
+        this.currentHost = location.host || '127.0.0.1:27502';
+        this.wiredProbeInterval = null;
+
+        // Remember host if initially launched directly via WiFi IP
+        if (location.hostname && location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
+            try {
+                localStorage.setItem('omnipad_server_lan_ip', location.hostname);
+            } catch (e) { }
+        }
 
         // Reusable 20-byte packet buffer
         this.packetBuffer = new ArrayBuffer(20);
@@ -57,7 +70,11 @@ class NetworkClient {
         window.addEventListener('pagehide', handleUnload);
     }
 
-    connect() {
+    connect(targetHost) {
+        if (targetHost) {
+            this.currentHost = targetHost;
+        }
+
         if (this.socket) {
             if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
                 return; // Already connected or connecting
@@ -66,21 +83,53 @@ class NetworkClient {
         }
 
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${location.host}/ws?sid=${encodeURIComponent(this.sessionId)}`;
+        const wsUrl = `${protocol}//${this.currentHost}/ws?sid=${encodeURIComponent(this.sessionId)}`;
+
+        const isLoopback = this.currentHost.startsWith('127.0.0.1') || this.currentHost.startsWith('localhost');
+        const expectedTransport = isLoopback ? 'wired' : 'wifi';
 
         this.socket = new WebSocket(wsUrl);
         this.socket.binaryType = 'arraybuffer';
 
         this.socket.onopen = () => {
             this.isConnected = true;
-            this.notifyStatus('Connected', true);
+            this.currentTransport = expectedTransport;
+            this.notifyStatus(expectedTransport === 'wired' ? 'Wired USB Connected' : 'WiFi Connected', true);
             this.startPingLoop();
+
+            if (this.onTransportChange) {
+                this.onTransportChange(this.currentTransport, this.currentHost);
+            }
+
+            // Probe server for LAN IP to store for failover
+            this.discoverLanIp();
+
+            // When running on WiFi, constantly monitor for USB re-plug in the background
+            if (this.currentTransport === 'wifi') {
+                this.startWiredProbeLoop();
+            } else {
+                this.stopWiredProbeLoop();
+            }
         };
 
         this.socket.onclose = () => {
             if (this.pingInterval) clearInterval(this.pingInterval);
             this.isConnected = false;
             this.notifyStatus('Disconnected', false);
+
+            // AUTO-FAILOVER: If wired loopback disconnected (e.g. cable unplugged), try known WiFi LAN IP
+            let savedLanIp = null;
+            try {
+                savedLanIp = localStorage.getItem('omnipad_server_lan_ip');
+            } catch (e) { }
+
+            if (isLoopback && savedLanIp && savedLanIp !== '127.0.0.1' && savedLanIp !== 'localhost') {
+                if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+                this.currentHost = `${savedLanIp}:27502`;
+                this.reconnectTimeout = setTimeout(() => this.connect(), 400);
+                return;
+            }
+
             if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
             this.reconnectTimeout = setTimeout(() => this.connect(), 1500); // Auto-reconnect
         };
@@ -103,6 +152,73 @@ class NetworkClient {
             this.socket = null;
         }
         this.connect();
+    }
+
+    discoverLanIp() {
+        try {
+            const infoUrl = 'http://' + this.currentHost + '/api/network/info';
+            fetch(infoUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.lanIps && data.lanIps.length > 0) {
+                        for (let i = 0; i < data.lanIps.length; i++) {
+                            const ip = data.lanIps[i];
+                            if (ip && ip !== '127.0.0.1' && ip.indexOf('192.168.56.') !== 0 && ip.indexOf('169.254.') !== 0) {
+                                this.discoveredLanIp = ip;
+                                localStorage.setItem('omnipad_server_lan_ip', ip);
+                                break;
+                            }
+                        }
+                    }
+                })
+                .catch(function(e) { });
+        } catch (e) { }
+    }
+
+    startWiredProbeLoop() {
+        this.stopWiredProbeLoop();
+        this.wiredProbeInterval = setInterval(() => {
+            this.probeWiredConnection();
+        }, 2500);
+    }
+
+    stopWiredProbeLoop() {
+        if (this.wiredProbeInterval) {
+            clearInterval(this.wiredProbeInterval);
+            this.wiredProbeInterval = null;
+        }
+    }
+
+    probeWiredConnection() {
+        try {
+            const probeUrl = 'http://127.0.0.1:27502/api/status?_t=' + Date.now();
+            fetch(probeUrl, { method: 'GET', cache: 'no-store' })
+                .then(res => {
+                    if (res && res.ok) {
+                        // Wired USB loopback is reachable! Upgrade to wired connection
+                        this.stopWiredProbeLoop();
+                        this.currentHost = '127.0.0.1:27502';
+                        this.reconnectImmediately();
+                    }
+                })
+                .catch(function(e) { });
+        } catch (e) { }
+    }
+
+    onUsbConnected() {
+        this.probeWiredConnection();
+    }
+
+    onUsbDisconnected() {
+        let savedLanIp = null;
+        try {
+            savedLanIp = localStorage.getItem('omnipad_server_lan_ip');
+        } catch (e) { }
+
+        if (savedLanIp && (this.currentHost.startsWith('127.0.0.1') || this.currentHost.startsWith('localhost'))) {
+            this.currentHost = savedLanIp + ':27502';
+            this.reconnectImmediately();
+        }
     }
 
     handleBinaryMessage(view) {
