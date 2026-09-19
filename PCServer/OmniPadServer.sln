@@ -1,0 +1,46 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.Core", "OmniPadServer.Core\OmniPadServer.Core.csproj", "{78B68716-4B62-4233-8D47-B5A8B6EBE602}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.ViGEm", "OmniPadServer.ViGEm\OmniPadServer.ViGEm.csproj", "{EF67CA65-B723-45E4-B036-B5DA692208B8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.App", "OmniPadServer.App\OmniPadServer.App.csproj", "{1E87FEBC-0DCA-48F7-8FA0-F55202061DD9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.Tests", "OmniPadServer.Tests\OmniPadServer.Tests.csproj", "{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.Legacinator", "OmniPadServer.Legacinator\OmniPadServer.Legacinator.csproj", "{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{78B68716-4B62-4233-8D47-B5A8B6EBE602}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78B68716-4B62-4233-8D47-B5A8B6EBE602}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78B68716-4B62-4233-8D47-B5A8B6EBE602}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78B68716-4B62-4233-8D47-B5A8B6EBE602}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF67CA65-B723-45E4-B036-B5DA692208B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF67CA65-B723-45E4-B036-B5DA692208B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF67CA65-B723-45E4-B036-B5DA692208B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF67CA65-B723-45E4-B036-B5DA692208B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E87FEBC-0DCA-48F7-8FA0-F55202061DD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E87FEBC-0DCA-48F7-8FA0-F55202061DD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E87FEBC-0DCA-48F7-8FA0-F55202061DD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E87FEBC-0DCA-48F7-8FA0-F55202061DD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

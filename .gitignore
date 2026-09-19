@@ -1,0 +1,20 @@
+## Visual Studio / .NET
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.suo
+
+## Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+
+## OS Files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
