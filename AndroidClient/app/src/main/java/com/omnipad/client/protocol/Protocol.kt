@@ -9,10 +9,13 @@ object Protocol {
 
     const val DEFAULT_INPUT_PORT = 27500
     const val DISCOVERY_PORT = 27501
+    const val DEFAULT_DSU_PORT = 26760
 
     const val INPUT_PACKET_SIZE = 20
     const val SESSION_MESSAGE_SIZE = 4
     const val RUMBLE_MESSAGE_SIZE = 6
+    const val MOTION_PACKET_SIZE = 36
+    const val TOUCHPAD_PACKET_SIZE = 13
 
     const val NO_PAD: Byte = 0xFF.toByte()
 
@@ -22,6 +25,10 @@ object Protocol {
     const val MSG_BYE: Byte = 0x04
     const val MSG_RUMBLE: Byte = 0x05
     const val MSG_DISCOVER: Byte = 0x06
+    const val MSG_MOTION: Byte = 0x10
+    const val MSG_TOUCHPAD: Byte = 0x11
+    const val MSG_SET_CONTROLLER_TYPE: Byte = 0x12
+    const val MSG_ACTIVE_PROFILE: Byte = 0x13
 
     // Button Bitmasks
     const val BTN_DPAD_UP: Short = 0x0001
@@ -35,6 +42,7 @@ object Protocol {
     const val BTN_LEFT_SHOULDER: Short = 0x0100
     const val BTN_RIGHT_SHOULDER: Short = 0x0200
     const val BTN_GUIDE: Short = 0x0400
+    const val BTN_TOUCHPAD: Short = 0x0800.toShort()
     const val BTN_A: Short = 0x1000.toShort()
     const val BTN_B: Short = 0x2000.toShort()
     const val BTN_X: Short = 0x4000.toShort()

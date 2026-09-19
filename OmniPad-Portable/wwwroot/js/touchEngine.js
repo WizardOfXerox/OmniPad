@@ -38,11 +38,14 @@ class TouchEngine {
             LB: 0x0100,
             RB: 0x0200,
             GUIDE: 0x0400,
+            TOUCHPAD: 0x0800,
             A: 0x1000,
             B: 0x2000,
             X: 0x4000,
             Y: 0x8000
         };
+
+        this.onTouchpadChanged = null;
 
         // Keep-alive heartbeat: guarantees server connection stays active even when hands are off glass
         this.lastEmitTime = performance.now();
@@ -316,5 +319,131 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerup', releaseDpad);
         containerEl.addEventListener('pointercancel', releaseDpad);
+    }
+
+    // High-resolution multi-touch trackpad (PS4/PS5 1920x942 coordinate space + gestures)
+    bindTouchpadElement(containerEl) {
+        const activeTouches = new Map();
+        let isTouchpadClicked = false;
+        let holdTimer = null;
+
+        const emitTouchpadState = () => {
+            const touchList = Array.from(activeTouches.values());
+            const f0 = touchList[0] || { isActive: false, id: 0, x: 0, y: 0 };
+            const f1 = touchList[1] || { isActive: false, id: 0, x: 0, y: 0 };
+
+            const tpState = {
+                clicked: isTouchpadClicked,
+                finger0: {
+                    isActive: !!touchList[0],
+                    id: f0.id || 0,
+                    x: f0.x || 0,
+                    y: f0.y || 0
+                },
+                finger1: {
+                    isActive: !!touchList[1],
+                    id: f1.id || 0,
+                    x: f1.x || 0,
+                    y: f1.y || 0
+                }
+            };
+
+            this.setButton(this.BUTTONS.TOUCHPAD, isTouchpadClicked);
+
+            if (this.onTouchpadChanged) {
+                this.onTouchpadChanged(tpState);
+            }
+        };
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            containerEl.setPointerCapture(e.pointerId);
+
+            const rect = containerEl.getBoundingClientRect();
+            const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            const tpX = Math.round(normX * 1920);
+            const tpY = Math.round(normY * 942);
+
+            const touchId = activeTouches.size;
+            activeTouches.set(e.pointerId, {
+                id: touchId,
+                x: tpX,
+                y: tpY,
+                startX: tpX,
+                startY: tpY,
+                downTime: performance.now()
+            });
+
+            containerEl.classList.add('touch-active');
+            this.triggerHaptic(10);
+
+            // Hold-to-click gesture (> 450ms without large movement)
+            if (holdTimer) clearTimeout(holdTimer);
+            holdTimer = setTimeout(() => {
+                if (activeTouches.has(e.pointerId)) {
+                    const t = activeTouches.get(e.pointerId);
+                    const dist = Math.abs(t.x - t.startX) + Math.abs(t.y - t.startY);
+                    if (dist < 80) {
+                        isTouchpadClicked = true;
+                        containerEl.classList.add('clicked');
+                        this.triggerHaptic(25);
+                        emitTouchpadState();
+                    }
+                }
+            }, 450);
+
+            emitTouchpadState();
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (!activeTouches.has(e.pointerId)) return;
+            const rect = containerEl.getBoundingClientRect();
+            const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            const tpX = Math.round(normX * 1920);
+            const tpY = Math.round(normY * 942);
+
+            const t = activeTouches.get(e.pointerId);
+            t.x = tpX;
+            t.y = tpY;
+
+            emitTouchpadState();
+        });
+
+        const handleTouchEnd = (e) => {
+            if (!activeTouches.has(e.pointerId)) return;
+            const t = activeTouches.get(e.pointerId);
+            const duration = performance.now() - t.downTime;
+            const dist = Math.abs(t.x - t.startX) + Math.abs(t.y - t.startY);
+
+            if (holdTimer) clearTimeout(holdTimer);
+
+            // Tap-to-click (< 250ms and < 60 units movement)
+            if (duration < 250 && dist < 60 && !isTouchpadClicked) {
+                isTouchpadClicked = true;
+                containerEl.classList.add('clicked');
+                this.triggerHaptic(18);
+                emitTouchpadState();
+                setTimeout(() => {
+                    isTouchpadClicked = false;
+                    containerEl.classList.remove('clicked');
+                    emitTouchpadState();
+                }, 80);
+            } else if (isTouchpadClicked) {
+                isTouchpadClicked = false;
+                containerEl.classList.remove('clicked');
+                emitTouchpadState();
+            }
+
+            activeTouches.delete(e.pointerId);
+            if (activeTouches.size === 0) {
+                containerEl.classList.remove('touch-active');
+            }
+            emitTouchpadState();
+        };
+
+        containerEl.addEventListener('pointerup', handleTouchEnd);
+        containerEl.addEventListener('pointercancel', handleTouchEnd);
     }
 }

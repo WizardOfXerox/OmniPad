@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OmniPadServer.Core\OmniPadServer.Core.csproj" />
     <ProjectReference Include="..\OmniPadServer.ViGEm\OmniPadServer.ViGEm.csproj" />
+    <ProjectReference Include="..\OmniPadServer.App\OmniPadServer.App.csproj" />
   </ItemGroup>
 
 </Project>

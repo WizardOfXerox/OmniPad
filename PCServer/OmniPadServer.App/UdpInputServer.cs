@@ -12,16 +12,28 @@ public sealed class UdpInputServer : IDisposable
     private readonly UdpClient _socket;
     private readonly IPadBackend _backend;
     private readonly SessionManager _sessionManager;
+    private readonly DsuMotionServer? _dsuServer;
+    private readonly TouchpadMouseEngine? _touchpadMouseEngine;
+    private readonly GyroAimEngine? _gyroAimEngine;
     private readonly CancellationTokenSource _cts = new();
     private Task? _receiverTask;
     private Task? _timeoutTask;
 
     public long PacketsReceived { get; private set; }
 
-    public UdpInputServer(IPadBackend backend, SessionManager sessionManager, int port = Protocol.DefaultInputPort)
+    public UdpInputServer(
+        IPadBackend backend,
+        SessionManager sessionManager,
+        DsuMotionServer? dsuServer = null,
+        TouchpadMouseEngine? touchpadMouseEngine = null,
+        GyroAimEngine? gyroAimEngine = null,
+        int port = Protocol.DefaultInputPort)
     {
         _backend = backend;
         _sessionManager = sessionManager;
+        _dsuServer = dsuServer;
+        _touchpadMouseEngine = touchpadMouseEngine;
+        _gyroAimEngine = gyroAimEngine;
 
         _socket = new UdpClient();
         _socket.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -57,7 +69,36 @@ public sealed class UdpInputServer : IDisposable
                         if (_sessionManager.TryProcessInput(remoteEp, input.Pad, input.Sequence, out byte assignedSlot))
                         {
                             _backend.Submit(assignedSlot, input.State);
+                            _dsuServer?.UpdatePadState(assignedSlot, input.State);
                             PacketsReceived++;
+                        }
+                    }
+                    continue;
+                }
+
+                // Case 1b: 36-byte motion frame (6-Axis Gyro & Accel)
+                if (buffer.Length == Protocol.MotionPacketSize)
+                {
+                    if (MotionPacket.TryParse(buffer, out var motionPkt))
+                    {
+                        if (_sessionManager.TryGetSlot(remoteEp, out byte assignedSlot))
+                        {
+                            _dsuServer?.UpdateMotion(assignedSlot, motionPkt.Motion);
+                            _gyroAimEngine?.ProcessMotion(motionPkt.Motion, 0.01, out _, out _, out _);
+                        }
+                    }
+                    continue;
+                }
+
+                // Case 1c: 13-byte touchpad frame (PS4 Touchpad 1920x942 coordinates)
+                if (buffer.Length == Protocol.TouchpadPacketSize)
+                {
+                    if (TouchpadPacket.TryParse(buffer, out var touchPkt))
+                    {
+                        if (_sessionManager.TryGetSlot(remoteEp, out byte assignedSlot))
+                        {
+                            _dsuServer?.UpdateTouchpad(assignedSlot, touchPkt.State);
+                            _touchpadMouseEngine?.ProcessTouchpad(touchPkt.State);
                         }
                     }
                     continue;

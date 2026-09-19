@@ -28,7 +28,7 @@ bool useDs4 = args.Any(a => a.Equals("--ds4", StringComparison.OrdinalIgnoreCase
                             a.Equals("--ps4", StringComparison.OrdinalIgnoreCase) ||
                             a.Equals("--controller-type=ds4", StringComparison.OrdinalIgnoreCase));
 var emulationType = useDs4 ? EmulationType.DualShock4 : EmulationType.Xbox360;
-var (backend, isHardware) = PadBackendFactory.CreateBackend(forceKeyboardMouse: forceKbm, emulationType: emulationType);
+var backend = new SwitchablePadBackend(forceKeyboardMouse: forceKbm, initialType: emulationType);
 
 // 2. Initialize Session Manager
 var sessionManager = new SessionManager();
@@ -45,18 +45,32 @@ sessionManager.ClientDisconnected += (slot, ep) =>
     Console.ResetColor();
 };
 
-// 3. Start UDP Input Server (125-250 Hz stream on 27500)
-var udpServer = new UdpInputServer(backend, sessionManager);
+// 3. Start CemuHook DSU UDP Motion Server (Port 26760)
+var dsuServer = new DsuMotionServer(Protocol.DefaultDsuPort);
+dsuServer.Start();
+Console.ForegroundColor = ConsoleColor.Green;
+Console.WriteLine($"[DSU Motion] CemuHook Server listening on 0.0.0.0:{Protocol.DefaultDsuPort} (100 Hz 6-Axis Emulation)");
+Console.ResetColor();
+
+// 3b. Motion, Mouse & Profile Watcher Engines
+var gyroEngine = new GyroAimEngine();
+var mouseEngine = new TouchpadMouseEngine();
+var profileWatcher = new ProcessProfileWatcher();
+profileWatcher.Start();
+Console.WriteLine("[Profiles]   Game process auto-profile watcher started");
+
+// 4. Start UDP Input Server (125-250 Hz stream on 27500)
+var udpServer = new UdpInputServer(backend, sessionManager, dsuServer, mouseEngine, gyroEngine);
 udpServer.Start();
 Console.WriteLine($"[UDP Input]  Listening on 0.0.0.0:{Protocol.DefaultInputPort} (125-250 Hz Stream)");
 
-// 4. Start LAN Discovery Server (Broadcast on 27501)
+// 5. Start LAN Discovery Server (Broadcast on 27501)
 var discoveryServer = new DiscoveryServer();
 discoveryServer.Start();
 Console.WriteLine($"[Discovery]  Broadcast listening on 0.0.0.0:{Protocol.DiscoveryPort}");
 
-// 5. Start Web Server & WebSockets (Zero-install PWA on 27502)
-var webServer = new WebServer(backend, sessionManager, Protocol.DefaultWebPort);
+// 6. Start Web Server & WebSockets (Zero-install PWA on 27502)
+var webServer = new WebServer(backend, sessionManager, dsuServer, mouseEngine, gyroEngine, profileWatcher, Protocol.DefaultWebPort);
 await webServer.StartAsync();
 
 string localIp = NetworkHelper.GetLocalIpAddress();
@@ -109,16 +123,16 @@ try
         sw.Restart();
 
         int players = sessionManager.ConnectedCount;
-        string mode = isHardware 
-            ? (emulationType == EmulationType.DualShock4 ? "Virtual DualShock 4 (ViGEm)" : "Virtual Xbox 360 (ViGEm)") 
-            : (forceKbm ? "Virtual KBM (SendInput)" : "KBM Fallback");
+        string mode = backend.CurrentEngineName;
 
-        Console.Write($"\r[Status] Players: {players}/{SessionManager.MaxSlots} | Input Rate: {hz:0} Hz | Engine: {mode}     ");
+        Console.Write($"\r[Status] Players: {players}/{SessionManager.MaxSlots} | Input Rate: {hz:0} Hz | Engine: {mode} | Profile: {profileWatcher.CurrentProfile}     ");
     }
 }
 catch (OperationCanceledException) { }
 
 Console.WriteLine("\nShutting down OmniPad Server...");
+profileWatcher.Dispose();
+dsuServer.Dispose();
 udpServer.Dispose();
 discoveryServer.Dispose();
 await webServer.DisposeAsync();

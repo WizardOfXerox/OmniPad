@@ -19,15 +19,36 @@ public sealed class WebServer : IAsyncDisposable
     private readonly WebApplication _app;
     private readonly IPadBackend _backend;
     private readonly SessionManager _sessionManager;
+    private readonly DsuMotionServer? _dsuServer;
+    private readonly TouchpadMouseEngine? _touchpadMouseEngine;
+    private readonly GyroAimEngine? _gyroAimEngine;
+    private readonly ProcessProfileWatcher? _profileWatcher;
     private readonly ConcurrentDictionary<byte, WebSocket> _slotSockets = new();
     private readonly ConcurrentDictionary<WebSocket, byte> _socketToSlot = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly AudioStreamServer _audioServer = new();
 
-    public WebServer(IPadBackend backend, SessionManager sessionManager, int port = Protocol.DefaultWebPort, string? webRoot = null)
+    public WebServer(
+        IPadBackend backend,
+        SessionManager sessionManager,
+        DsuMotionServer? dsuServer = null,
+        TouchpadMouseEngine? touchpadMouseEngine = null,
+        GyroAimEngine? gyroAimEngine = null,
+        ProcessProfileWatcher? profileWatcher = null,
+        int port = Protocol.DefaultWebPort,
+        string? webRoot = null)
     {
         _backend = backend;
         _sessionManager = sessionManager;
+        _dsuServer = dsuServer;
+        _touchpadMouseEngine = touchpadMouseEngine;
+        _gyroAimEngine = gyroAimEngine;
+        _profileWatcher = profileWatcher;
+
+        if (_profileWatcher != null)
+        {
+            _profileWatcher.ProfileChanged += profile => _ = BroadcastActiveProfileAsync(profile);
+        }
 
         // Auto-clean backend and broadcast status whenever any session times out or disconnects
         _sessionManager.ClientDisconnected += (slot, ep) =>
@@ -101,6 +122,80 @@ public sealed class WebServer : IAsyncDisposable
                 {
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 }
+            }
+            else if (context.Request.Path == "/api/settings/controller-type")
+            {
+                if (HttpMethods.IsGet(context.Request.Method))
+                {
+                    string currentType = _backend is OmniPadServer.ViGEm.SwitchablePadBackend s
+                        ? (s.CurrentType == OmniPadServer.ViGEm.EmulationType.DualShock4 ? "dualshock4" : "xbox360")
+                        : "xbox360";
+                    string engine = _backend is OmniPadServer.ViGEm.SwitchablePadBackend sb ? sb.CurrentEngineName : "Hardware Gamepad";
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"type\":\"{currentType}\",\"engine\":\"{engine}\"}}");
+                }
+                else if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string? type = context.Request.Query["type"].ToString();
+                    if (string.IsNullOrWhiteSpace(type) && context.Request.HasFormContentType && context.Request.Form.TryGetValue("type", out var formType))
+                    {
+                        type = formType.ToString();
+                    }
+
+                    bool isDs4 = string.Equals(type, "dualshock4", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type, "ds4", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type, "ps4", StringComparison.OrdinalIgnoreCase);
+
+                    if (_backend is OmniPadServer.ViGEm.SwitchablePadBackend switchable)
+                    {
+                        switchable.SwitchEmulationType(isDs4 ? OmniPadServer.ViGEm.EmulationType.DualShock4 : OmniPadServer.ViGEm.EmulationType.Xbox360);
+                    }
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":true,\"type\":\"{(isDs4 ? "dualshock4" : "xbox360")}\"}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/settings/mouse-mode")
+            {
+                if (HttpMethods.IsGet(context.Request.Method))
+                {
+                    bool enabled = _touchpadMouseEngine?.Enabled ?? false;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"enabled\":{enabled.ToString().ToLowerInvariant()}}}");
+                }
+                else if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string? enabledStr = context.Request.Query["enabled"].ToString();
+                    if (string.IsNullOrWhiteSpace(enabledStr) && context.Request.HasFormContentType && context.Request.Form.TryGetValue("enabled", out var formVal))
+                    {
+                        enabledStr = formVal.ToString();
+                    }
+
+                    bool enabled = string.Equals(enabledStr, "true", StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(enabledStr, "1", StringComparison.OrdinalIgnoreCase);
+
+                    if (_touchpadMouseEngine != null)
+                    {
+                        _touchpadMouseEngine.Enabled = enabled;
+                    }
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":true,\"enabled\":{enabled.ToString().ToLowerInvariant()}}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/settings/profile")
+            {
+                string current = _profileWatcher?.CurrentProfile ?? "xbox360";
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"profile\":\"{current}\"}}");
             }
             else
             {
@@ -194,6 +289,19 @@ public sealed class WebServer : IAsyncDisposable
         byte[] welcomeMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, currentSlot];
         await socket.SendAsync(welcomeMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
 
+        // Send initial active profile if available
+        if (_profileWatcher != null && !string.IsNullOrEmpty(_profileWatcher.CurrentProfile))
+        {
+            byte[] profileBytes = System.Text.Encoding.ASCII.GetBytes(_profileWatcher.CurrentProfile);
+            byte[] profMsg = new byte[4 + profileBytes.Length];
+            profMsg[0] = Protocol.MagicByte;
+            profMsg[1] = Protocol.Version;
+            profMsg[2] = Protocol.MsgActiveProfile;
+            profMsg[3] = (byte)profileBytes.Length;
+            Buffer.BlockCopy(profileBytes, 0, profMsg, 4, profileBytes.Length);
+            try { await socket.SendAsync(profMsg, WebSocketMessageType.Binary, true, CancellationToken.None); } catch { }
+        }
+
         // Broadcast updated slot statuses to all clients
         _ = BroadcastSlotStatusAsync();
 
@@ -234,7 +342,35 @@ public sealed class WebServer : IAsyncDisposable
                         if (_sessionManager.TryProcessInput(endPoint, input.Pad, input.Sequence, out byte slot))
                         {
                             _backend.Submit(slot, input.State);
+                            _dsuServer?.UpdatePadState(slot, input.State);
                         }
+                    }
+                }
+                // 1b. Motion packet (36 bytes: 6-Axis Gyro & Accel)
+                else if (result.Count == Protocol.MotionPacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgMotion)
+                {
+                    if (MotionPacket.TryParse(buffer.AsSpan(0, result.Count), out var motionPkt))
+                    {
+                        _dsuServer?.UpdateMotion(currentSlot, motionPkt.Motion);
+                        _gyroAimEngine?.ProcessMotion(motionPkt.Motion, 0.01, out _, out _, out _);
+                    }
+                }
+                // 1c. Touchpad packet (13 bytes: PS4 Touchpad 1920x942 coordinates)
+                else if (result.Count == Protocol.TouchpadPacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgTouchpad)
+                {
+                    if (TouchpadPacket.TryParse(buffer.AsSpan(0, result.Count), out var touchPkt))
+                    {
+                        _dsuServer?.UpdateTouchpad(currentSlot, touchPkt.State);
+                        _touchpadMouseEngine?.ProcessTouchpad(touchPkt.State);
+                    }
+                }
+                // 1d. Set Controller Type (4 bytes: Magic, Ver, 0x12, Type: 0=Xbox, 1=DS4)
+                else if (result.Count >= 4 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgSetControllerType)
+                {
+                    byte typeByte = buffer[3];
+                    if (_backend is OmniPadServer.ViGEm.SwitchablePadBackend switchable)
+                    {
+                        switchable.SwitchEmulationType(typeByte == 1 ? OmniPadServer.ViGEm.EmulationType.DualShock4 : OmniPadServer.ViGEm.EmulationType.Xbox360);
                     }
                 }
                 // 2. Ping packet
@@ -357,6 +493,29 @@ public sealed class WebServer : IAsyncDisposable
                 }
             }
             catch { }
+        }
+    }
+
+    public async Task BroadcastActiveProfileAsync(string profile)
+    {
+        byte[] profileBytes = System.Text.Encoding.ASCII.GetBytes(profile);
+        byte[] msg = new byte[4 + profileBytes.Length];
+        msg[0] = Protocol.MagicByte;
+        msg[1] = Protocol.Version;
+        msg[2] = Protocol.MsgActiveProfile;
+        msg[3] = (byte)profileBytes.Length;
+        Buffer.BlockCopy(profileBytes, 0, msg, 4, profileBytes.Length);
+
+        foreach (var ws in _slotSockets.Values)
+        {
+            if (ws.State == WebSocketState.Open)
+            {
+                try
+                {
+                    await ws.SendAsync(msg, WebSocketMessageType.Binary, true, CancellationToken.None);
+                }
+                catch { }
+            }
         }
     }
 

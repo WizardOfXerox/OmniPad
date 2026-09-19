@@ -13,6 +13,7 @@
 local.properties
 *.iml
 .idea/
+.kotlin/
 
 ## OS Files
 Thumbs.db

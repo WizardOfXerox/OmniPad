@@ -29,7 +29,7 @@ const LAYOUT_PRESETS = {
         { id: 'rs', type: 'joystick', binding: 'right', x: 0.72, y: 0.78, w: 148, h: 148 }
     ],
 
-    // 2. PlayStation DualShock (Symmetrical Bottom Sticks)
+    // 2. PlayStation DualShock (Symmetrical Bottom Sticks + Center Touchpad)
     playstation: [
         // Top Shoulders & Triggers
         { id: 'l2', type: 'trigger', binding: 'LT', label: 'L2', x: 0.08, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
@@ -38,8 +38,11 @@ const LAYOUT_PRESETS = {
         { id: 'r2', type: 'trigger', binding: 'RT', label: 'R2', x: 0.92, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
 
         // Center System Buttons
-        { id: 'share', type: 'button', binding: 0x0020, label: 'SHARE', x: 0.40, y: 0.18, w: 66, h: 32, shape: 'pill' },
-        { id: 'options', type: 'button', binding: 0x0010, label: 'OPTIONS', x: 0.60, y: 0.18, w: 74, h: 32, shape: 'pill' },
+        { id: 'share', type: 'button', binding: 0x0020, label: 'SHARE', x: 0.38, y: 0.14, w: 66, h: 32, shape: 'pill' },
+        { id: 'options', type: 'button', binding: 0x0010, label: 'OPTIONS', x: 0.62, y: 0.14, w: 74, h: 32, shape: 'pill' },
+
+        // Center DualShock 4 Touchpad
+        { id: 'ps_touchpad', type: 'touchpad', label: 'TOUCHPAD', x: 0.50, y: 0.34, w: 200, h: 92 },
 
         // Left Side: D-Pad Top-Left
         { id: 'dpad', type: 'dpad', x: 0.16, y: 0.41, w: 155, h: 155 },
@@ -53,6 +56,29 @@ const LAYOUT_PRESETS = {
         // Symmetrical Sticks on Bottom
         { id: 'ls', type: 'joystick', binding: 'left', x: 0.33, y: 0.75, w: 145, h: 145 },
         { id: 'rs', type: 'joystick', binding: 'right', x: 0.67, y: 0.75, w: 145, h: 145 }
+    ],
+
+    // 3. Nintendo Switch Pro (Authentic Inverted A/B, X/Y + Home & Capture)
+    switch_pro: [
+        { id: 'zl', type: 'trigger', binding: 'LT', label: 'ZL', x: 0.08, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+        { id: 'l', type: 'button', binding: 0x0100, label: 'L', x: 0.20, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'r', type: 'button', binding: 0x0200, label: 'R', x: 0.80, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'zr', type: 'trigger', binding: 'RT', label: 'ZR', x: 0.92, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+
+        { id: 'btn_minus', type: 'button', binding: 0x0020, label: '−', x: 0.38, y: 0.18, w: 46, h: 46, shape: 'action' },
+        { id: 'btn_capture', type: 'button', binding: 0x0800, label: '⚲', x: 0.46, y: 0.22, w: 40, h: 40, shape: 'action' },
+        { id: 'btn_home', type: 'button', binding: 0x0400, label: '⌂', x: 0.54, y: 0.22, w: 40, h: 40, shape: 'action' },
+        { id: 'btn_plus', type: 'button', binding: 0x0010, label: '+', x: 0.62, y: 0.18, w: 46, h: 46, shape: 'action' },
+
+        { id: 'ls', type: 'joystick', binding: 'left', x: 0.16, y: 0.38, w: 148, h: 148 },
+        { id: 'dpad', type: 'dpad', x: 0.24, y: 0.78, w: 148, h: 148 },
+
+        // Nintendo Diamond: Top X, Left Y, Right A, Bottom B
+        { id: 'btn_x', type: 'button', binding: 0x8000, label: 'X', btnClass: 'btn-x', x: 0.85, y: 0.24, w: 66, h: 66 },
+        { id: 'btn_y', type: 'button', binding: 0x4000, label: 'Y', btnClass: 'btn-y', x: 0.75, y: 0.38, w: 66, h: 66 },
+        { id: 'btn_a', type: 'button', binding: 0x2000, label: 'A', btnClass: 'btn-b', x: 0.95, y: 0.38, w: 66, h: 66 },
+        { id: 'btn_b', type: 'button', binding: 0x1000, label: 'B', btnClass: 'btn-a', x: 0.85, y: 0.52, w: 66, h: 66 },
+        { id: 'rs', type: 'joystick', binding: 'right', x: 0.72, y: 0.78, w: 148, h: 148 }
     ],
 
     // 3. Authentic Arcade Fightstick (Sanwa 8-Button Vewlix Curve + Ball-Top Stick)
@@ -127,16 +153,34 @@ const LAYOUT_PRESETS = {
         { id: 'btn_crouch', type: 'button', binding: 0x2000, label: 'Slide (B)', btnClass: 'btn-b', x: 0.90, y: 0.72, w: 66, h: 66, shape: 'action' }
     ],
 
-    // 6. Retro Arcade
-    retro: [
+    // 8. Retro SNES / Classic (Authentic D-Pad + 4 Face + L/R Bumpers)
+    snes_retro: [
+        { id: 'l_bumper', type: 'button', binding: 0x0100, label: 'L', x: 0.16, y: 0.12, w: 100, h: 44, shape: 'shoulder' },
+        { id: 'r_bumper', type: 'button', binding: 0x0200, label: 'R', x: 0.84, y: 0.12, w: 100, h: 44, shape: 'shoulder' },
+
         { id: 'dpad', type: 'dpad', x: 0.22, y: 0.52, w: 165, h: 165 },
-        { id: 'select', type: 'button', binding: 0x0020, label: 'SELECT', x: 0.43, y: 0.78, w: 76, h: 36, shape: 'pill' },
-        { id: 'start', type: 'button', binding: 0x0010, label: 'START', x: 0.57, y: 0.78, w: 76, h: 36, shape: 'pill' },
-        { id: 'btn_b', type: 'button', binding: 0x2000, label: 'B', btnClass: 'btn-b', x: 0.74, y: 0.56, w: 74, h: 74 },
-        { id: 'btn_a', type: 'button', binding: 0x1000, label: 'A', btnClass: 'btn-a', x: 0.88, y: 0.44, w: 74, h: 74 }
+
+        { id: 'select', type: 'button', binding: 0x0020, label: 'SELECT', x: 0.44, y: 0.76, w: 76, h: 36, shape: 'pill' },
+        { id: 'start', type: 'button', binding: 0x0010, label: 'START', x: 0.56, y: 0.76, w: 76, h: 36, shape: 'pill' },
+
+        // SNES Diamond: Top X, Left Y, Right A, Bottom B
+        { id: 'btn_x', type: 'button', binding: 0x8000, label: 'X', btnClass: 'btn-x', x: 0.82, y: 0.32, w: 68, h: 68 },
+        { id: 'btn_y', type: 'button', binding: 0x4000, label: 'Y', btnClass: 'btn-y', x: 0.72, y: 0.46, w: 68, h: 68 },
+        { id: 'btn_a', type: 'button', binding: 0x2000, label: 'A', btnClass: 'btn-b', x: 0.92, y: 0.46, w: 68, h: 68 },
+        { id: 'btn_b', type: 'button', binding: 0x1000, label: 'B', btnClass: 'btn-a', x: 0.82, y: 0.60, w: 68, h: 68 }
     ],
 
-    // 7. Couch PC Trackpad & Media Remote
+    // 9. Touchpad-Only (Edge-to-Edge PS4/PS5 Trackpad for External Controller & Phone Clip Users)
+    touchpad_only: [
+        { id: 'l1', type: 'button', binding: 0x0100, label: 'L1', x: 0.10, y: 0.12, w: 90, h: 44, shape: 'shoulder' },
+        { id: 'r1', type: 'button', binding: 0x0200, label: 'R1', x: 0.90, y: 0.12, w: 90, h: 44, shape: 'shoulder' },
+        { id: 'l3', type: 'button', binding: 0x0040, label: 'L3', x: 0.10, y: 0.86, w: 70, h: 44, shape: 'pill' },
+        { id: 'r3', type: 'button', binding: 0x0080, label: 'R3', x: 0.90, y: 0.86, w: 70, h: 44, shape: 'pill' },
+
+        { id: 'full_touchpad', type: 'touchpad', label: 'DUALSHOCK 4 TOUCHPAD', x: 0.50, y: 0.54, w: 560, h: 220 }
+    ],
+
+    // 10. Couch PC Trackpad & Media Remote
     trackpad: [
         { id: 'key_esc', type: 'button', binding: 0x0020, label: 'Esc', x: 0.10, y: 0.10, w: 56, h: 38, shape: 'key' },
         { id: 'key_tab', type: 'button', binding: 0x0100, label: 'Tab', x: 0.20, y: 0.10, w: 56, h: 38, shape: 'key' },
@@ -144,7 +188,7 @@ const LAYOUT_PRESETS = {
         { id: 'key_space', type: 'button', binding: 0x1000, label: 'Space', x: 0.72, y: 0.10, w: 76, h: 38, shape: 'key' },
         { id: 'key_enter', type: 'button', binding: 0x0010, label: 'Enter', x: 0.85, y: 0.10, w: 68, h: 38, shape: 'key' },
 
-        { id: 'trackpad_main', type: 'trackpad_mouse', x: 0.50, y: 0.48, w: 460, h: 200 },
+        { id: 'trackpad_main', type: 'touchpad', label: 'DESKTOP TRACKPAD', x: 0.50, y: 0.48, w: 460, h: 200 },
         { id: 'click_left', type: 'trigger', binding: 'LT', label: 'Left Click', x: 0.36, y: 0.84, w: 140, h: 50, shape: 'shoulder' },
         { id: 'click_right', type: 'trigger', binding: 'RT', label: 'Right Click', x: 0.64, y: 0.84, w: 140, h: 50, shape: 'shoulder' }
     ]

@@ -147,9 +147,19 @@ public sealed class SessionManager
             long now = Stopwatch.GetTimestamp();
             session.LastSeenTicks = now;
             session.PacketsReceived++;
-
             assignedSlot = slot;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Gets the slot assigned to an endpoint, if any.
+    /// </summary>
+    public bool TryGetSlot(EndPoint endPoint, out byte slot)
+    {
+        lock (_lock)
+        {
+            return _endpointToSlot.TryGetValue(endPoint, out slot);
         }
     }
 

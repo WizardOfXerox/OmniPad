@@ -16,7 +16,8 @@ class OmniPadApp {
         this.network = new NetworkClient();
         this.audio = new AudioEngine();
         this.touch = new TouchEngine((state) => this.network.sendInput(state));
-        this.gyro = new GyroEngine(this.touch);
+        this.touch.onTouchpadChanged = (tpState) => this.network.sendTouchpad(tpState);
+        this.gyro = new GyroEngine(this.touch, this.network);
         this.macros = new MacroEngine(this.touch);
         this.customizer = new LayoutCustomizer(this);
 
@@ -67,6 +68,16 @@ class OmniPadApp {
 
         this.network.onSwapDeclined = (targetSlot) => {
             this.showToast(`Player ${targetSlot + 1} declined the swap request.`);
+        };
+
+        this.network.onProfileChange = (profileName) => {
+            const key = profileName.toLowerCase();
+            if (LAYOUT_PRESETS[key] && this.currentPresetKey !== key) {
+                this.showToast(`Auto-Profile: ${key.toUpperCase()}`);
+                this.currentPresetKey = key;
+                if (this.presetSelector) this.presetSelector.value = key;
+                this.loadProfile(key);
+            }
         };
 
         // 2. Setup Lifecycle & Event Listeners
@@ -349,7 +360,7 @@ class OmniPadApp {
 
     loadProfile(key) {
         // Enforce cache invalidation for upgraded ergonomic presets
-        const PRESET_VERSION = 'v5_arcade_fightstick';
+        const PRESET_VERSION = 'v7_touchpad_switch_pro';
         if (localStorage.getItem('omnipad_version') !== PRESET_VERSION) {
             for (let k of Object.keys(LAYOUT_PRESETS)) {
                 localStorage.removeItem(`omnipad_layout_${k}`);
@@ -545,27 +556,19 @@ class OmniPadApp {
                     </svg>
                 `;
             }
-            // 8. Trackpad Mouse
+            // 8. PS4/PS5 Touchpad & Trackpad
+            else if (item.type === 'touchpad') {
+                el.classList.add('touchpad-surface');
+                el.innerHTML = `
+                    <div class="touchpad-bar"></div>
+                    <div class="touchpad-label">${item.label || 'TOUCHPAD'}</div>
+                `;
+                this.touch.bindTouchpadElement(el);
+            }
+            // 8b. Trackpad Mouse
             else if (item.type === 'trackpad_mouse') {
                 el.classList.add('trackpad-surface');
-                let lastX, lastY;
-                el.addEventListener('pointerdown', (e) => {
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                });
-                el.addEventListener('pointermove', (e) => {
-                    if (lastX !== undefined) {
-                        const dx = (e.clientX - lastX) * 200;
-                        const dy = -(e.clientY - lastY) * 200;
-                        lastX = e.clientX;
-                        lastY = e.clientY;
-                        this.touch.setStick('right', dx / 32767, dy / 32767);
-                    }
-                });
-                el.addEventListener('pointerup', () => {
-                    lastX = undefined;
-                    this.touch.setStick('right', 0, 0);
-                });
+                this.touch.bindTouchpadElement(el);
             }
             // 9. FPS Aim Trackpad
             else if (item.type === 'trackpad_aim') {

@@ -1,10 +1,13 @@
 /**
  * OmniPad Gyroscope & Motion Engine
- * Motion-based aiming, tilt steering, and capacitive touch activation.
+ * 1. 100Hz 6-Axis IMU sensor streaming over WebSocket/UDP (CemuHook DSU format).
+ * 2. Physical shake detection (BetterJoy jerk spike math).
+ * 3. Local capacitive gyro aiming & tilt steering fallback.
  */
 class GyroEngine {
-    constructor(touchEngine) {
+    constructor(touchEngine, networkClient = null) {
         this.touchEngine = touchEngine;
+        this.network = networkClient;
         this.mode = 'off'; // 'off', 'aim', 'steer', 'mouse'
         this.touchOnly = true;
         this.sensX = 1.0;
@@ -18,12 +21,17 @@ class GyroEngine {
 
         this.isAimingActive = false;
         this.isEnabled = false;
+
+        // Physical shake detection (BetterJoy math: jerk spike > 1.5G)
+        this.lastShakeTime = 0;
+        this.shakeCooldownMs = 400;
+        this.onShake = null;
     }
 
     async init() {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
             try {
-                const response = await DeviceOrientationEvent.requestPermission();
+                const response = await DeviceMotionEvent.requestPermission();
                 if (response === 'granted') {
                     this.startListening();
                     return true;
@@ -41,7 +49,65 @@ class GyroEngine {
     startListening() {
         if (this.isEnabled) return;
         this.isEnabled = true;
-        window.addEventListener('deviceorientation', (e) => this.handleOrientation(e));
+
+        // 1. High-rate 6-axis hardware motion listener
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (e) => this.handleMotion(e), { passive: true });
+        }
+
+        // 2. Orientation listener for local stick aiming / steering
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (e) => this.handleOrientation(e), { passive: true });
+        }
+    }
+
+    handleMotion(e) {
+        const accel = e.accelerationIncludingGravity || e.acceleration;
+        const rot = e.rotationRate;
+
+        if (!accel) return;
+
+        // Convert m/s^2 to G
+        const G = 9.80665;
+        const ax = (accel.x || 0) / G;
+        const ay = (accel.y || 0) / G;
+        const az = (accel.z || 0) / G;
+
+        const gx = rot ? (rot.beta || 0) : 0;   // deg/s pitch
+        const gy = rot ? (rot.gamma || 0) : 0;  // deg/s yaw
+        const gz = rot ? (rot.alpha || 0) : 0;  // deg/s roll
+
+        // 1. Shake Detection (BetterJoy dynamic jerk)
+        const accelMag = Math.sqrt(ax * ax + ay * ay + az * az);
+        const dynamicG = Math.abs(accelMag - 1.0);
+        if (dynamicG >= 1.5) {
+            const now = performance.now();
+            if (now - this.lastShakeTime >= this.shakeCooldownMs) {
+                this.lastShakeTime = now;
+                this.touchEngine.triggerHaptic(35);
+                if (this.onShake) {
+                    this.onShake();
+                } else {
+                    // Default shake gesture: pulse Touchpad click or button
+                    this.touchEngine.setButton(this.touchEngine.BUTTONS.TOUCHPAD, true);
+                    setTimeout(() => {
+                        this.touchEngine.setButton(this.touchEngine.BUTTONS.TOUCHPAD, false);
+                    }, 60);
+                }
+            }
+        }
+
+        // 2. Stream 6-axis IMU packet to PC server (for CemuHook / ViGEm / JSM)
+        if (this.network && this.network.isConnected) {
+            this.network.sendMotion({
+                accelX: ax,
+                accelY: ay,
+                accelZ: az,
+                gyroX: gx,
+                gyroY: gy,
+                gyroZ: gz
+            });
+        }
     }
 
     handleOrientation(e) {

@@ -14,6 +14,7 @@ class NetworkClient {
         this.onSwapPrompt = null;
         this.onSwapDeclined = null;
         this.onSlotChanged = null;
+        this.onProfileChange = null;
 
         // Reusable 20-byte packet buffer
         this.packetBuffer = new ArrayBuffer(20);
@@ -178,6 +179,81 @@ class NetworkClient {
                 this.onSwapDeclined(targetSlot);
             }
         }
+
+        // ACTIVE_PROFILE message (0x13, len, ...name)
+        if (type === 0x13 && view.byteLength >= 4) {
+            const nameLen = view.getUint8(3);
+            let name = '';
+            for (let i = 0; i < nameLen && (4 + i) < view.byteLength; i++) {
+                name += String.fromCharCode(view.getUint8(4 + i));
+            }
+            if (this.onProfileChange && name) {
+                this.onProfileChange(name);
+            }
+        }
+    }
+
+    sendMotion(motion) {
+        if (!this.isConnected || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+
+        const buffer = new ArrayBuffer(36);
+        const view = new DataView(buffer);
+        view.setUint8(0, 0xDA);
+        view.setUint8(1, 0x01);
+        view.setUint8(2, 0x10); // MsgMotion
+        view.setUint8(3, this.padSlot);
+
+        // timestampUs (u64 little-endian)
+        const nowUs = BigInt(Math.round(performance.now() * 1000));
+        view.setBigUint64(4, nowUs, true);
+
+        // 3-axis accel in G (f32 little-endian)
+        view.setFloat32(12, motion.accelX || 0, true);
+        view.setFloat32(16, motion.accelY || 0, true);
+        view.setFloat32(20, motion.accelZ || 0, true);
+
+        // 3-axis gyro in deg/s (f32 little-endian)
+        view.setFloat32(24, motion.gyroX || 0, true);
+        view.setFloat32(28, motion.gyroY || 0, true);
+        view.setFloat32(32, motion.gyroZ || 0, true);
+
+        this.socket.send(buffer);
+    }
+
+    sendTouchpad(tpState) {
+        if (!this.isConnected || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+
+        const buffer = new ArrayBuffer(13);
+        const view = new DataView(buffer);
+        view.setUint8(0, 0xDA);
+        view.setUint8(1, 0x01);
+        view.setUint8(2, 0x11); // MsgTouchpad
+        view.setUint8(3, this.padSlot);
+
+        let flags = 0;
+        if (tpState.clicked) flags |= 0x01;
+        if (tpState.finger0 && tpState.finger0.isActive) flags |= 0x02;
+        if (tpState.finger1 && tpState.finger1.isActive) flags |= 0x04;
+        view.setUint8(4, flags);
+
+        const f0X = (tpState.finger0 && tpState.finger0.isActive) ? Math.max(0, Math.min(1920, tpState.finger0.x)) : 0;
+        const f0Y = (tpState.finger0 && tpState.finger0.isActive) ? Math.max(0, Math.min(942, tpState.finger0.y)) : 0;
+        view.setUint16(5, f0X, true);
+        view.setUint16(7, f0Y, true);
+
+        const f1X = (tpState.finger1 && tpState.finger1.isActive) ? Math.max(0, Math.min(1920, tpState.finger1.x)) : 0;
+        const f1Y = (tpState.finger1 && tpState.finger1.isActive) ? Math.max(0, Math.min(942, tpState.finger1.y)) : 0;
+        view.setUint16(9, f1X, true);
+        view.setUint16(11, f1Y, true);
+
+        this.socket.send(buffer);
+    }
+
+    sendControllerType(type) {
+        if (!this.isConnected || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+        const isDs4 = type === 'dualshock4' || type === 'ds4' || type === 'ps4';
+        const buffer = new Uint8Array([0xDA, 0x01, 0x12, isDs4 ? 1 : 0]);
+        this.socket.send(buffer);
     }
 
     requestSlotSwitch(targetSlot) {

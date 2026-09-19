@@ -62,6 +62,74 @@ public class ProtocolTests
     }
 
     [Fact]
+    public void MotionPacket_RoundTripsCorrectly()
+    {
+        var motion = new MotionState
+        {
+            TimestampUs = 123456789012345,
+            AccelX = 0.12f,
+            AccelY = -0.98f,
+            AccelZ = 0.05f,
+            GyroX = 12.5f,
+            GyroY = -3.2f,
+            GyroZ = 45.0f
+        };
+
+        var packet = new MotionPacket(1, in motion);
+        byte[] buffer = new byte[Protocol.MotionPacketSize];
+        packet.WriteTo(buffer);
+
+        Assert.True(MotionPacket.TryParse(buffer, out var parsed));
+        Assert.Equal(1, parsed.Pad);
+        Assert.Equal(motion.TimestampUs, parsed.Motion.TimestampUs);
+        Assert.Equal(motion.AccelX, parsed.Motion.AccelX, 3);
+        Assert.Equal(motion.AccelY, parsed.Motion.AccelY, 3);
+        Assert.Equal(motion.AccelZ, parsed.Motion.AccelZ, 3);
+        Assert.Equal(motion.GyroX, parsed.Motion.GyroX, 3);
+        Assert.Equal(motion.GyroY, parsed.Motion.GyroY, 3);
+        Assert.Equal(motion.GyroZ, parsed.Motion.GyroZ, 3);
+    }
+
+    [Fact]
+    public void TouchpadPacket_RoundTripsCorrectly()
+    {
+        var touch = new TouchpadState
+        {
+            Clicked = true,
+            Finger0 = new TouchPoint { IsActive = true, Id = 0, X = 960, Y = 471 },
+            Finger1 = new TouchPoint { IsActive = true, Id = 1, X = 1200, Y = 300 }
+        };
+
+        var packet = new TouchpadPacket(2, in touch);
+        byte[] buffer = new byte[Protocol.TouchpadPacketSize];
+        packet.WriteTo(buffer);
+
+        Assert.True(TouchpadPacket.TryParse(buffer, out var parsed));
+        Assert.Equal(2, parsed.Pad);
+        Assert.True(parsed.State.Clicked);
+        Assert.True(parsed.State.Finger0.IsActive);
+        Assert.Equal(960, parsed.State.Finger0.X);
+        Assert.Equal(471, parsed.State.Finger0.Y);
+        Assert.True(parsed.State.Finger1.IsActive);
+        Assert.Equal(1200, parsed.State.Finger1.X);
+        Assert.Equal(300, parsed.State.Finger1.Y);
+    }
+
+    [Fact]
+    public void PadState_TouchpadButton_WorksCorrectly()
+    {
+        var state = PadState.Neutral;
+        Assert.False(state.IsButtonPressed(Protocol.Buttons.Touchpad));
+
+        state.SetButton(Protocol.Buttons.Touchpad, true);
+        Assert.True(state.IsButtonPressed(Protocol.Buttons.Touchpad));
+        Assert.Equal(0x0800, state.Buttons & (ushort)Protocol.Buttons.Touchpad);
+
+        state.SetButton(Protocol.Buttons.Touchpad, false);
+        Assert.False(state.IsButtonPressed(Protocol.Buttons.Touchpad));
+    }
+
+    [Fact]
     public void RumbleMessage_RoundTrip_Works()
     {
         byte[] buffer = new byte[6];

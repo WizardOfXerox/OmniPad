@@ -76,18 +76,11 @@ public sealed class ViGEmDualShock4PadBackend : IPadBackend
         pad.SetButtonState(DualShock4Button.ThumbLeft, state.IsButtonPressed(Protocol.Buttons.LeftThumb));
         pad.SetButtonState(DualShock4Button.ThumbRight, state.IsButtonPressed(Protocol.Buttons.RightThumb));
 
-        // Navigation
+        // Navigation & Special Buttons
         pad.SetButtonState(DualShock4Button.Options, state.IsButtonPressed(Protocol.Buttons.Start));
         pad.SetButtonState(DualShock4Button.Share, state.IsButtonPressed(Protocol.Buttons.Back));
-
-        if (state.IsButtonPressed(Protocol.Buttons.Guide))
-        {
-            pad.SetSpecialButtonsFull((byte)DualShock4SpecialButton.Ps.Value);
-        }
-        else
-        {
-            pad.SetSpecialButtonsFull(0);
-        }
+        pad.SetButtonState(DualShock4SpecialButton.Ps, state.IsButtonPressed(Protocol.Buttons.Guide));
+        pad.SetButtonState(DualShock4SpecialButton.Touchpad, state.IsButtonPressed(Protocol.Buttons.Touchpad));
 
         // Sliders (Triggers 0..255)
         pad.SetSliderValue(DualShock4Slider.LeftTrigger, state.LeftTrigger);
