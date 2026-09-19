@@ -38,11 +38,11 @@ class OmniPadApp {
                     try {
                         window.OmniPadNative.vibrateHeavy(Math.min(100, Math.round(intensity / 2.5)));
                         return;
-                    } catch { }
+                    } catch (e) { }
                 }
                 try {
                     navigator.vibrate([Math.min(100, Math.round(intensity / 2.5))]);
-                } catch { }
+                } catch (e) { }
             }
         };
 
@@ -58,7 +58,7 @@ class OmniPadApp {
             this.showToast(`Controller Assigned: Player ${newSlot + 1}`);
             this.renderPlayerSlotsList();
             if (this.touch.hapticsEnabled) {
-                try { navigator.vibrate([40, 60, 40]); } catch { }
+                try { navigator.vibrate([40, 60, 40]); } catch (e) { }
             }
         };
 
@@ -138,11 +138,16 @@ class OmniPadApp {
         if ('wakeLock' in navigator) {
             try {
                 this.wakeLock = await navigator.wakeLock.request('screen');
-            } catch { }
+            } catch (e) { }
         }
     }
 
     initUi() {
+        const on = (id, evt, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(evt, fn);
+        };
+
         // Floating HUD pill toggling Top Navigation Drawer
         const topBar = document.getElementById('top-bar');
         const statusPill = document.getElementById('status-pill');
@@ -163,8 +168,8 @@ class OmniPadApp {
             }
         };
 
-        statusPill?.addEventListener('click', toggleTopBar);
-        btnHideTopbar?.addEventListener('click', hideTopBar);
+        if (statusPill) statusPill.addEventListener('click', toggleTopBar);
+        if (btnHideTopbar) btnHideTopbar.addEventListener('click', hideTopBar);
 
         // Player Switcher Modal Openers
         const slotBadge = document.getElementById('slot-badge');
@@ -176,21 +181,23 @@ class OmniPadApp {
             this.openPlayerSwitchModal();
         };
 
-        slotBadge?.addEventListener('pointerdown', (e) => e.stopPropagation());
-        slotBadge?.addEventListener('click', openSlotModal);
+        if (slotBadge) {
+            slotBadge.addEventListener('pointerdown', (e) => e.stopPropagation());
+            slotBadge.addEventListener('click', openSlotModal);
+        }
 
-        document.getElementById('btn-topbar-slot')?.addEventListener('click', (e) => {
+        on('btn-topbar-slot', 'click', (e) => {
             e.stopPropagation();
             hideTopBar();
             this.openPlayerSwitchModal();
         });
 
         // Close modal buttons and backdrop clicks
-        document.getElementById('btn-close-player-switch')?.addEventListener('click', (e) => {
+        on('btn-close-player-switch', 'click', (e) => {
             e.stopPropagation();
             this.closePlayerSwitchModal();
         });
-        document.getElementById('backdrop-player-switch')?.addEventListener('click', (e) => {
+        on('backdrop-player-switch', 'click', (e) => {
             e.stopPropagation();
             this.closePlayerSwitchModal();
         });
@@ -199,10 +206,12 @@ class OmniPadApp {
         const btnAudioJack = document.getElementById('btn-audio-jack');
         const audioJackText = document.getElementById('audio-jack-text');
 
-        btnAudioJack?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.audio.toggle();
-        });
+        if (btnAudioJack) {
+            btnAudioJack.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.audio.toggle();
+            });
+        }
 
         this.audio.onStateChange = (streaming) => {
             if (btnAudioJack) {
@@ -219,20 +228,24 @@ class OmniPadApp {
         };
 
         // Clicking / touching anywhere on the gamepad container collapses the top drawer during play
-        this.container?.addEventListener('pointerdown', () => {
-            if (topBar && !topBar.classList.contains('collapsed') && !this.customizer.isEditing) {
-                hideTopBar();
-            }
-        });
+        if (this.container) {
+            this.container.addEventListener('pointerdown', () => {
+                if (topBar && !topBar.classList.contains('collapsed') && !this.customizer.isEditing) {
+                    hideTopBar();
+                }
+            });
+        }
 
         // Preset Switching
-        this.presetSelector?.addEventListener('change', (e) => {
-            this.currentPresetKey = e.target.value;
-            this.loadProfile(this.currentPresetKey);
-        });
+        if (this.presetSelector) {
+            this.presetSelector.addEventListener('change', (e) => {
+                this.currentPresetKey = e.target.value;
+                this.loadProfile(this.currentPresetKey);
+            });
+        }
 
         // Fullscreen Toggle
-        document.getElementById('btn-fullscreen')?.addEventListener('click', () => {
+        on('btn-fullscreen', 'click', () => {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => { });
             } else {
@@ -242,13 +255,13 @@ class OmniPadApp {
 
         // Settings Modal
         const settingsModal = document.getElementById('settings-modal');
-        document.getElementById('btn-settings')?.addEventListener('click', () => {
+        on('btn-settings', 'click', () => {
             hideTopBar();
-            settingsModal?.classList.remove('hidden');
+            if (settingsModal) settingsModal.classList.remove('hidden');
             document.body.classList.add('modal-open');
         });
-        document.getElementById('btn-close-settings')?.addEventListener('click', () => {
-            settingsModal?.classList.add('hidden');
+        on('btn-close-settings', 'click', () => {
+            if (settingsModal) settingsModal.classList.add('hidden');
             document.body.classList.remove('modal-open');
         });
 
@@ -258,12 +271,13 @@ class OmniPadApp {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById(btn.dataset.tab)?.classList.add('active');
+                const targetTab = document.getElementById(btn.dataset.tab);
+                if (targetTab) targetTab.classList.add('active');
             });
         });
 
         // Settings Controls
-        document.getElementById('setting-theme')?.addEventListener('change', (e) => {
+        on('setting-theme', 'change', (e) => {
             document.body.className = e.target.value;
         });
 
@@ -283,23 +297,25 @@ class OmniPadApp {
             });
         }
 
-        document.getElementById('setting-deadzone')?.addEventListener('input', (e) => {
+        on('setting-deadzone', 'input', (e) => {
             const val = e.target.value / 100.0;
             this.touch.deadzone = val;
-            document.getElementById('val-deadzone').textContent = `${e.target.value}%`;
+            const el = document.getElementById('val-deadzone');
+            if (el) el.textContent = `${e.target.value}%`;
         });
 
-        document.getElementById('setting-floating-stick')?.addEventListener('change', (e) => {
+        on('setting-floating-stick', 'change', (e) => {
             this.touch.floatingSticks = e.target.checked;
         });
 
-        document.getElementById('setting-touch-haptics')?.addEventListener('change', (e) => {
+        on('setting-touch-haptics', 'change', (e) => {
             this.touch.hapticsEnabled = e.target.checked;
         });
 
-        document.getElementById('setting-brightness')?.addEventListener('input', (e) => {
+        on('setting-brightness', 'input', (e) => {
             const pct = e.target.value;
-            document.getElementById('val-brightness').textContent = `${pct}%`;
+            const el = document.getElementById('val-brightness');
+            if (el) el.textContent = `${pct}%`;
             document.body.style.filter = `brightness(${pct}%)`;
         });
 
@@ -315,21 +331,21 @@ class OmniPadApp {
         }
 
         // Gyro Settings
-        document.getElementById('setting-gyro-mode')?.addEventListener('change', (e) => {
+        on('setting-gyro-mode', 'change', (e) => {
             this.gyro.mode = e.target.value;
         });
 
-        document.getElementById('setting-gyro-touch-only')?.addEventListener('change', (e) => {
+        on('setting-gyro-touch-only', 'change', (e) => {
             this.gyro.touchOnly = e.target.checked;
         });
 
-        document.getElementById('btn-request-gyro')?.addEventListener('click', async () => {
+        on('btn-request-gyro', 'click', async () => {
             const granted = await this.gyro.init();
             alert(granted ? 'Motion sensors initialized!' : 'Permission denied or sensors unavailable.');
         });
 
         // Profile Export/Import
-        document.getElementById('btn-export-profile')?.addEventListener('click', () => {
+        on('btn-export-profile', 'click', () => {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.currentLayout, null, 2));
             const dl = document.createElement('a');
             dl.setAttribute("href", dataStr);
@@ -338,24 +354,28 @@ class OmniPadApp {
         });
 
         const fileInput = document.getElementById('file-import-profile');
-        document.getElementById('btn-import-profile')?.addEventListener('click', () => fileInput.click());
-        fileInput?.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        this.currentLayout = JSON.parse(event.target.result);
-                        this.saveCurrentProfile();
-                        this.renderLayout();
-                        alert('Profile imported successfully!');
-                    } catch {
-                        alert('Invalid profile JSON file.');
-                    }
-                };
-                reader.readAsText(file);
-            }
+        on('btn-import-profile', 'click', () => {
+            if (fileInput) fileInput.click();
         });
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            this.currentLayout = JSON.parse(event.target.result);
+                            this.saveCurrentProfile();
+                            this.renderLayout();
+                            alert('Profile imported successfully!');
+                        } catch (err) {
+                            alert('Invalid profile JSON file.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
     }
 
     loadProfile(key) {
@@ -374,7 +394,7 @@ class OmniPadApp {
                 this.currentLayout = JSON.parse(saved);
                 this.renderLayout();
                 return;
-            } catch { }
+            } catch (e) { }
         }
 
         // Load factory preset
@@ -755,7 +775,7 @@ class OmniPadApp {
                 if (!hasMoved) {
                     e.stopPropagation();
                     if (this.touch.hapticsEnabled) {
-                        try { navigator.vibrate(14); } catch { }
+                        try { navigator.vibrate(14); } catch (e) { }
                     }
                     action();
                 }
@@ -873,7 +893,7 @@ class OmniPadApp {
         if (desc) desc.textContent = `Player ${fromSlot + 1} wants to swap controller slots with you.`;
 
         // Trigger vibration alert
-        try { navigator.vibrate([100, 50, 100]); } catch { }
+        try { navigator.vibrate([100, 50, 100]); } catch (e) { }
 
         modal.classList.remove('hidden');
         document.body.classList.add('modal-open');

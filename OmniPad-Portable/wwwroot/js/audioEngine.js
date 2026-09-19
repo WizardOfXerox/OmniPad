@@ -68,10 +68,10 @@ class AudioEngine {
                                     this.gainNode = this.audioCtx.createGain();
                                     this.gainNode.gain.value = this.volume;
                                     this.gainNode.connect(this.audioCtx.destination);
-                                } catch { }
+                                } catch (e) { }
                             }
                         }
-                    } catch { }
+                    } catch (e) { }
                     return;
                 }
 
@@ -143,7 +143,7 @@ class AudioEngine {
 
     stop() {
         if (this.socket) {
-            try { this.socket.close(); } catch { }
+            try { this.socket.close(); } catch (e) { }
             this.socket = null;
         }
         this.isStreaming = false;

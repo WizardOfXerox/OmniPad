@@ -131,7 +131,7 @@ class MainActivity : Activity() {
             allowUniversalAccessFromFileURLs = true
             useWideViewPort = true
             loadWithOverviewMode = true
-            cacheMode = WebSettings.LOAD_DEFAULT
+            cacheMode = WebSettings.LOAD_NO_CACHE
             mediaPlaybackRequiresUserGesture = false
         }
 

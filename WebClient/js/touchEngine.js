@@ -58,10 +58,10 @@ class TouchEngine {
 
     triggerHaptic(duration = 12) {
         if (window.OmniPadNative && typeof window.OmniPadNative.vibrate === 'function') {
-            try { window.OmniPadNative.vibrate(duration); return; } catch { }
+            try { window.OmniPadNative.vibrate(duration); return; } catch (e) { }
         }
         if (this.hapticsEnabled && 'vibrate' in navigator) {
-            try { navigator.vibrate(duration); } catch { }
+            try { navigator.vibrate(duration); } catch (e) { }
         }
     }
 
@@ -281,10 +281,14 @@ class TouchEngine {
                 this.emitState();
 
                 // Update visual glowing highlights on active wings
-                containerEl.querySelector('.dpad-up')?.classList.toggle('active', (newMask & this.BUTTONS.DPAD_UP) !== 0);
-                containerEl.querySelector('.dpad-down')?.classList.toggle('active', (newMask & this.BUTTONS.DPAD_DOWN) !== 0);
-                containerEl.querySelector('.dpad-left')?.classList.toggle('active', (newMask & this.BUTTONS.DPAD_LEFT) !== 0);
-                containerEl.querySelector('.dpad-right')?.classList.toggle('active', (newMask & this.BUTTONS.DPAD_RIGHT) !== 0);
+                const elUp = containerEl.querySelector('.dpad-up');
+                if (elUp) elUp.classList.toggle('active', (newMask & this.BUTTONS.DPAD_UP) !== 0);
+                const elDown = containerEl.querySelector('.dpad-down');
+                if (elDown) elDown.classList.toggle('active', (newMask & this.BUTTONS.DPAD_DOWN) !== 0);
+                const elLeft = containerEl.querySelector('.dpad-left');
+                if (elLeft) elLeft.classList.toggle('active', (newMask & this.BUTTONS.DPAD_LEFT) !== 0);
+                const elRight = containerEl.querySelector('.dpad-right');
+                if (elRight) elRight.classList.toggle('active', (newMask & this.BUTTONS.DPAD_RIGHT) !== 0);
 
                 if (newMask !== 0) {
                     this.triggerHaptic(14);
@@ -298,10 +302,14 @@ class TouchEngine {
                 activeMask = 0;
                 this.emitState();
 
-                containerEl.querySelector('.dpad-up')?.classList.remove('active');
-                containerEl.querySelector('.dpad-down')?.classList.remove('active');
-                containerEl.querySelector('.dpad-left')?.classList.remove('active');
-                containerEl.querySelector('.dpad-right')?.classList.remove('active');
+                const elUp = containerEl.querySelector('.dpad-up');
+                if (elUp) elUp.classList.remove('active');
+                const elDown = containerEl.querySelector('.dpad-down');
+                if (elDown) elDown.classList.remove('active');
+                const elLeft = containerEl.querySelector('.dpad-left');
+                if (elLeft) elLeft.classList.remove('active');
+                const elRight = containerEl.querySelector('.dpad-right');
+                if (elRight) elRight.classList.remove('active');
             }
         };
 

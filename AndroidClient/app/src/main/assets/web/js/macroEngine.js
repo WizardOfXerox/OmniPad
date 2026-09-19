@@ -19,7 +19,7 @@ class MacroEngine {
                 const parsed = JSON.parse(stored);
                 parsed.forEach(m => this.savedMacros.set(m.id, m));
                 return;
-            } catch { }
+            } catch (e) { }
         }
 
         // Default Fighting Game Macros (Tekken / SF)

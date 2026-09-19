@@ -24,23 +24,28 @@ class LayoutCustomizer {
     }
 
     initToolbarListeners() {
-        document.getElementById('btn-edit-mode')?.addEventListener('click', () => this.toggleEditMode());
-        document.getElementById('btn-exit-edit')?.addEventListener('click', () => this.toggleEditMode());
+        const on = (id, evt, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(evt, fn);
+        };
 
-        document.getElementById('btn-save-layout')?.addEventListener('click', () => {
+        on('btn-edit-mode', 'click', () => this.toggleEditMode());
+        on('btn-exit-edit', 'click', () => this.toggleEditMode());
+
+        on('btn-save-layout', 'click', () => {
             this.app.saveCurrentProfile();
             alert('Custom layout saved!');
             this.toggleEditMode();
         });
 
-        document.getElementById('btn-reset-layout')?.addEventListener('click', () => {
+        on('btn-reset-layout', 'click', () => {
             if (confirm('Reset layout to factory preset?')) {
                 this.app.resetCurrentProfile();
             }
         });
 
         // Add Button
-        document.getElementById('btn-add-button')?.addEventListener('click', () => {
+        on('btn-add-button', 'click', () => {
             const label = prompt('Button label (e.g. EXTRA, C, Z):', 'EXTRA');
             if (label) {
                 this.app.currentLayout.push({
@@ -58,7 +63,7 @@ class LayoutCustomizer {
         });
 
         // Add Combo Button
-        document.getElementById('btn-add-combo')?.addEventListener('click', () => {
+        on('btn-add-combo', 'click', () => {
             const comboStr = prompt('Buttons to combine (e.g. X,Y or A,B):', 'X,Y');
             if (comboStr) {
                 const buttons = comboStr.split(',').map(s => s.trim().toUpperCase());
@@ -77,7 +82,7 @@ class LayoutCustomizer {
         });
 
         // Add Macro Button
-        document.getElementById('btn-add-macro')?.addEventListener('click', () => {
+        on('btn-add-macro', 'click', () => {
             const macroId = prompt('Macro ID (e.g. macro_ewgf, macro_slide_cancel):', 'macro_ewgf');
             if (macroId) {
                 this.app.currentLayout.push({
@@ -95,8 +100,7 @@ class LayoutCustomizer {
         });
 
         // Scale Slider
-        const slider = document.getElementById('comp-scale-slider');
-        slider?.addEventListener('input', (e) => {
+        on('comp-scale-slider', 'input', (e) => {
             if (this.selectedData && this.selectedElement) {
                 const scale = e.target.value / 100.0;
                 this.selectedData.scale = scale;
@@ -105,8 +109,7 @@ class LayoutCustomizer {
         });
 
         // D-pad Spacing Slider (Controls gap from center / between buttons)
-        const spacingSlider = document.getElementById('dpad-spacing-slider');
-        spacingSlider?.addEventListener('input', (e) => {
+        on('dpad-spacing-slider', 'input', (e) => {
             if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
                 const spacing = parseInt(e.target.value);
                 this.selectedData.spacing = spacing;
@@ -115,8 +118,7 @@ class LayoutCustomizer {
         });
 
         // D-pad Button Size Slider (Controls size of individual directional buttons)
-        const btnSizeSlider = document.getElementById('dpad-btnsize-slider');
-        btnSizeSlider?.addEventListener('input', (e) => {
+        on('dpad-btnsize-slider', 'input', (e) => {
             if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
                 const btnScale = e.target.value / 100.0;
                 this.selectedData.btnScale = btnScale;
@@ -125,14 +127,14 @@ class LayoutCustomizer {
         });
 
         // D-pad Background Disc Toggle
-        const bgToggle = document.getElementById('dpad-bg-toggle');
-        bgToggle?.addEventListener('click', () => {
+        on('dpad-bg-toggle', 'click', () => {
             if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
                 const currentShow = this.selectedData.showBg !== false;
                 const nextShow = !currentShow;
                 this.selectedData.showBg = nextShow;
                 this.selectedElement.classList.toggle('dpad-no-bg', !nextShow);
-                bgToggle.textContent = nextShow ? 'Disc: ON' : 'Disc: OFF';
+                const bgToggle = document.getElementById('dpad-bg-toggle');
+                if (bgToggle) bgToggle.textContent = nextShow ? 'Disc: ON' : 'Disc: OFF';
             }
         });
     }

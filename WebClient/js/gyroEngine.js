@@ -36,7 +36,7 @@ class GyroEngine {
                     this.startListening();
                     return true;
                 }
-            } catch {
+            } catch (e) {
                 return false;
             }
         } else {

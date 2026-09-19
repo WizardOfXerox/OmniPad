@@ -37,7 +37,7 @@ class NetworkClient {
                 sid = 'pad_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now().toString(36);
                 sessionStorage.setItem('omnipad_session_id', sid);
             }
-        } catch {
+        } catch (e) {
             sid = 'pad_' + Math.random().toString(36).substring(2, 11);
         }
         this.sessionId = sid;
@@ -50,7 +50,7 @@ class NetworkClient {
                     const bye = new Uint8Array([0xDA, 0x01, 0x04, this.padSlot]);
                     this.socket.send(bye);
                     this.socket.close(1000, "Unload");
-                } catch { }
+                } catch (e) { }
             }
         };
         window.addEventListener('beforeunload', handleUnload);
@@ -62,7 +62,7 @@ class NetworkClient {
             if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
                 return; // Already connected or connecting
             }
-            try { this.socket.close(); } catch { }
+            try { this.socket.close(); } catch (e) { }
         }
 
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -86,7 +86,7 @@ class NetworkClient {
         };
 
         this.socket.onerror = () => {
-            try { this.socket.close(); } catch { }
+            try { this.socket.close(); } catch (e) { }
         };
 
         this.socket.onmessage = (event) => {
@@ -99,7 +99,7 @@ class NetworkClient {
     reconnectImmediately() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
         if (this.socket) {
-            try { this.socket.close(); } catch { }
+            try { this.socket.close(); } catch (e) { }
             this.socket = null;
         }
         this.connect();
@@ -203,9 +203,12 @@ class NetworkClient {
         view.setUint8(2, 0x10); // MsgMotion
         view.setUint8(3, this.padSlot);
 
-        // timestampUs (u64 little-endian)
-        const nowUs = BigInt(Math.round(performance.now() * 1000));
-        view.setBigUint64(4, nowUs, true);
+        // timestampUs (u64 little-endian: low 32-bit word at offset 4, high 32-bit word at offset 8)
+        const nowUs = Math.round(performance.now() * 1000);
+        const lowWord = (nowUs % 0x100000000) >>> 0;
+        const highWord = Math.floor(nowUs / 0x100000000) >>> 0;
+        view.setUint32(4, lowWord, true);
+        view.setUint32(8, highWord, true);
 
         // 3-axis accel in G (f32 little-endian)
         view.setFloat32(12, motion.accelX || 0, true);
