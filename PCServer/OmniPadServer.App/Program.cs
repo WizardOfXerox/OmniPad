@@ -77,8 +77,9 @@ string localIp = NetworkHelper.GetLocalIpAddress();
 string webUrl = $"http://{localIp}:{Protocol.DefaultWebPort}";
 Console.WriteLine($"[Web Server] Serving Web Gamepad PWA on {webUrl}");
 
-// 6. Check for USB Phone (ADB Reverse Tunnel)
-AdbHelper.TrySetupUsbReverse(Protocol.DefaultInputPort, Protocol.DefaultWebPort);
+// 6. Start USB Phone Hotplug Watcher (Auto-configures sub-1ms ADB reverse tunnel whenever phone is plugged in)
+var usbWatcher = new UsbPhoneWatcher(Protocol.DefaultInputPort, Protocol.DefaultWebPort);
+usbWatcher.Start();
 
 // 7. Display Connection Instructions & Terminal QR Code
 Console.WriteLine();
@@ -131,6 +132,7 @@ try
 catch (OperationCanceledException) { }
 
 Console.WriteLine("\nShutting down OmniPad Server...");
+usbWatcher.Dispose();
 profileWatcher.Dispose();
 dsuServer.Dispose();
 udpServer.Dispose();
