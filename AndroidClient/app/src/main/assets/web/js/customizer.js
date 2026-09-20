@@ -99,27 +99,47 @@ class LayoutCustomizer {
             }
         });
 
-        // D-pad Spacing Slider
+        // D-pad / D-pad ABXY Circle Size Slider (adjusts diameter and interactive touch area)
+        on('dpad-circlesize-slider', 'input', (e) => {
+            if (this.selectedData && this.selectedElement && (this.selectedData.type === 'dpad' || this.selectedData.type === 'dpad_abxy')) {
+                const size = parseInt(e.target.value, 10);
+                this.selectedData.w = size;
+                this.selectedData.h = size;
+                this.selectedElement.style.width = size + 'px';
+                this.selectedElement.style.height = size + 'px';
+            }
+        });
+
+        // D-pad / D-pad ABXY Disc Corner Roundness (50% = circle, 10% = rounded squircle)
+        on('dpad-discradius-slider', 'input', (e) => {
+            if (this.selectedData && this.selectedElement && (this.selectedData.type === 'dpad' || this.selectedData.type === 'dpad_abxy')) {
+                const rad = parseInt(e.target.value, 10);
+                this.selectedData.discRadius = rad;
+                this.selectedElement.style.setProperty('--dpad-disc-radius', rad + '%');
+            }
+        });
+
+        // D-pad / D-pad ABXY Spacing Slider
         on('dpad-spacing-slider', 'input', (e) => {
-            if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
+            if (this.selectedData && this.selectedElement && (this.selectedData.type === 'dpad' || this.selectedData.type === 'dpad_abxy')) {
                 const spacing = parseInt(e.target.value, 10);
                 this.selectedData.spacing = spacing;
                 this.selectedElement.style.setProperty('--dpad-gap', spacing + 'px');
             }
         });
 
-        // D-pad Button Size Slider
+        // D-pad / D-pad ABXY Button Size Slider
         on('dpad-btnsize-slider', 'input', (e) => {
-            if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
+            if (this.selectedData && this.selectedElement && (this.selectedData.type === 'dpad' || this.selectedData.type === 'dpad_abxy')) {
                 const btnScale = e.target.value / 100.0;
                 this.selectedData.btnScale = btnScale;
                 this.selectedElement.style.setProperty('--dpad-btn-scale', btnScale.toString());
             }
         });
 
-        // D-pad Background Disc Toggle
+        // D-pad / D-pad ABXY Background Disc Toggle
         on('dpad-bg-toggle', 'click', () => {
-            if (this.selectedData && this.selectedElement && this.selectedData.type === 'dpad') {
+            if (this.selectedData && this.selectedElement && (this.selectedData.type === 'dpad' || this.selectedData.type === 'dpad_abxy')) {
                 const currentShow = this.selectedData.showBg !== false;
                 const nextShow = !currentShow;
                 this.selectedData.showBg = nextShow;
@@ -286,10 +306,26 @@ class LayoutCustomizer {
                     label: 'D-PAD',
                     x: 0.5,
                     y: 0.5,
-                    w: 140,
-                    h: 140,
+                    w: 148,
+                    h: 148,
                     spacing: 14,
                     btnScale: 1.0,
+                    discRadius: 50,
+                    showBg: true
+                };
+                break;
+            case 'ctrl_dpad_abxy':
+                newControl = {
+                    id: 'dpad_abxy_' + timestamp,
+                    type: 'dpad_abxy',
+                    label: 'ABXY DPAD',
+                    x: 0.5,
+                    y: 0.5,
+                    w: 148,
+                    h: 148,
+                    spacing: 14,
+                    btnScale: 1.0,
+                    discRadius: 50,
                     showBg: true
                 };
                 break;
@@ -521,7 +557,7 @@ class LayoutCustomizer {
             if (!this.isEditing) return;
             e.stopPropagation();
             isDragging = true;
-            el.setPointerCapture(e.pointerId);
+            try { el.setPointerCapture(e.pointerId); } catch (_) {}
 
             this.select(el, itemData);
             startX = e.clientX;
@@ -565,9 +601,23 @@ class LayoutCustomizer {
             slider.value = Math.round((itemData.scale || 1.0) * 100);
         }
 
+        const badge = document.getElementById('toolbar-selected-label');
+        if (badge) {
+            badge.textContent = (itemData.label || itemData.id || itemData.type).toUpperCase();
+        }
+
         const dpadCtrls = document.querySelectorAll('.dpad-only-ctrl');
-        if (itemData.type === 'dpad') {
+        if (itemData.type === 'dpad' || itemData.type === 'dpad_abxy') {
             dpadCtrls.forEach(c => c.style.display = 'inline-flex');
+            const circleSlider = document.getElementById('dpad-circlesize-slider');
+            if (circleSlider) {
+                circleSlider.value = itemData.w || 148;
+            }
+            const discRadiusSlider = document.getElementById('dpad-discradius-slider');
+            if (discRadiusSlider) {
+                const radVal = typeof itemData.discRadius === 'number' ? itemData.discRadius : (parseInt(itemData.discRadius, 10) || 50);
+                discRadiusSlider.value = radVal;
+            }
             const spacingSlider = document.getElementById('dpad-spacing-slider');
             if (spacingSlider) {
                 spacingSlider.value = itemData.spacing !== undefined ? itemData.spacing : 14;
@@ -590,6 +640,10 @@ class LayoutCustomizer {
             this.selectedElement.classList.remove('selected');
             this.selectedElement = null;
             this.selectedData = null;
+        }
+        const badge = document.getElementById('toolbar-selected-label');
+        if (badge) {
+            badge.textContent = 'Select a Control';
         }
         const dpadCtrls = document.querySelectorAll('.dpad-only-ctrl');
         dpadCtrls.forEach(c => c.style.display = 'none');

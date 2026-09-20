@@ -309,6 +309,10 @@ class OmniPadApp {
             if (settingsModal) settingsModal.classList.add('hidden');
             document.body.classList.remove('modal-open');
         });
+        on('btn-footer-close-settings', 'click', () => {
+            if (settingsModal) settingsModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        });
         on('backdrop-settings', 'click', () => {
             if (settingsModal) settingsModal.classList.add('hidden');
             document.body.classList.remove('modal-open');
@@ -1068,6 +1072,9 @@ class OmniPadApp {
                 if (item.btnScale !== undefined) {
                     el.style.setProperty('--dpad-btn-scale', item.btnScale.toString());
                 }
+                if (item.discRadius !== undefined) {
+                    el.style.setProperty('--dpad-disc-radius', typeof item.discRadius === 'number' ? `${item.discRadius}%` : item.discRadius);
+                }
                 if (item.showBg === false) {
                     el.classList.add('dpad-no-bg');
                 }
@@ -1089,6 +1096,40 @@ class OmniPadApp {
                     </div>
                 `;
                 this.touch.bindDpadElement(el);
+            }
+            // 4b. Tactile D-Pad Style ABXY Cross (Rolling thumb face buttons + simultaneous dual chords)
+            else if (item.type === 'dpad_abxy') {
+                el.classList.add('dpad-container', 'dpad-abxy-container');
+                if (item.spacing !== undefined) {
+                    el.style.setProperty('--dpad-gap', `${item.spacing}px`);
+                }
+                if (item.btnScale !== undefined) {
+                    el.style.setProperty('--dpad-btn-scale', item.btnScale.toString());
+                }
+                if (item.discRadius !== undefined) {
+                    el.style.setProperty('--dpad-disc-radius', typeof item.discRadius === 'number' ? `${item.discRadius}%` : item.discRadius);
+                }
+                if (item.showBg === false) {
+                    el.classList.add('dpad-no-bg');
+                }
+                el.innerHTML = `
+                    <div class="dpad-cross dpad-abxy-cross">
+                        <div class="dpad-btn dpad-abxy-btn dpad-abxy-y dpad-up" title="Y">
+                            <span>Y</span>
+                        </div>
+                        <div class="dpad-btn dpad-abxy-btn dpad-abxy-x dpad-left" title="X">
+                            <span>X</span>
+                        </div>
+                        <div class="dpad-btn dpad-abxy-btn dpad-abxy-b dpad-right" title="B">
+                            <span>B</span>
+                        </div>
+                        <div class="dpad-btn dpad-abxy-btn dpad-abxy-a dpad-down" title="A">
+                            <span>A</span>
+                        </div>
+                        <div class="dpad-core dpad-abxy-core"></div>
+                    </div>
+                `;
+                this.touch.bindDpadAbxyElement(el);
             }
             // 5. D-Pad 8-Way Matrix (Fighting Hitbox)
             else if (item.type === 'dpad_matrix') {

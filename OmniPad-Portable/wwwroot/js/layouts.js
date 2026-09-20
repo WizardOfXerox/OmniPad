@@ -130,6 +130,30 @@ const LAYOUT_PRESETS = {
         { id: 'btn_rage', type: 'macro', macroId: 'macro_ewgf', label: 'EWGF', x: 0.86, y: 0.83, w: 76, h: 44, shape: 'pill' }
     ],
 
+    // 4b. D-Pad Dual Cross (Retro Fighting & Rolling Thumb Disc Chords)
+    dual_dpad: [
+        // Top Shoulders & Triggers
+        { id: 'lt', type: 'trigger', binding: 'LT', label: 'LT', x: 0.08, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+        { id: 'lb', type: 'button', binding: 0x0100, label: 'LB', x: 0.20, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'rb', type: 'button', binding: 0x0200, label: 'RB', x: 0.80, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'rt', type: 'trigger', binding: 'RT', label: 'RT', x: 0.92, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+
+        // Center System Buttons
+        { id: 'back', type: 'button', binding: 0x0020, label: 'BACK', svg: 'view', x: 0.42, y: 0.18, w: 46, h: 46 },
+        { id: 'guide', type: 'button', binding: 0x0400, label: 'GUIDE', svg: 'guide', x: 0.50, y: 0.18, w: 50, h: 50 },
+        { id: 'start', type: 'button', binding: 0x0010, label: 'START', svg: 'menu', x: 0.58, y: 0.18, w: 46, h: 46 },
+
+        // Left Side: Tactile Directional D-Pad Disc
+        { id: 'dpad_left', type: 'dpad', x: 0.18, y: 0.58, w: 154, h: 154, spacing: 14, btnScale: 1.0, discRadius: 50, showBg: true },
+
+        // Right Side: Tactile ABXY D-Pad Disc (Roll for diagonals/dual-chords: A+B, X+Y, Y+B, A+X)
+        { id: 'dpad_right_abxy', type: 'dpad_abxy', x: 0.82, y: 0.58, w: 154, h: 154, spacing: 14, btnScale: 1.0, discRadius: 50, showBg: true },
+
+        // Center Sticks / Extras (L3 / R3 Clicks)
+        { id: 'btn_l3', type: 'button', binding: 0x0040, label: 'L3', x: 0.42, y: 0.72, w: 60, h: 44, shape: 'pill' },
+        { id: 'btn_r3', type: 'button', binding: 0x0080, label: 'R3', x: 0.58, y: 0.72, w: 60, h: 44, shape: 'pill' }
+    ],
+
     // 5. Racing Wheel & Pedals
     racing: [
         { id: 'paddle_down', type: 'button', binding: 0x0100, label: '◄ GEAR -', x: 0.14, y: 0.10, w: 110, h: 46, shape: 'shoulder' },
@@ -431,4 +455,6 @@ LAYOUT_PRESETS.sega = LAYOUT_PRESETS.sega_saturn;
 LAYOUT_PRESETS.ps1 = LAYOUT_PRESETS.ps1_classic;
 LAYOUT_PRESETS.ds = LAYOUT_PRESETS.ds_3ds;
 LAYOUT_PRESETS['3ds'] = LAYOUT_PRESETS.ds_3ds;
+LAYOUT_PRESETS.retro_fighter = LAYOUT_PRESETS.dual_dpad;
+LAYOUT_PRESETS.fighter = LAYOUT_PRESETS.dual_dpad;
 

@@ -159,7 +159,7 @@ class TouchEngine {
 
         el.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            el.setPointerCapture(e.pointerId);
+            try { el.setPointerCapture(e.pointerId); } catch (_) {}
             this.triggerHaptic(14);
 
             if (type === 'button') {
@@ -339,40 +339,34 @@ class TouchEngine {
                 deadzone = Math.max(12, parseInt(customGap) * 1.5);
             }
 
+            const maxRadius = Math.max(rect.width, rect.height) / 2;
+            const isOuterSide = dist > (deadzone + (maxRadius - deadzone) * 0.35);
+
             if (dist > deadzone) {
                 const angle = Math.atan2(dy, dx) * (180 / Math.PI); // -180 to 180 deg
-                const isCornerPush = dist > (deadzone + 8);
 
-                // Wide 70° cardinal sectors guarantee single-button accuracy
-                if (angle >= -35 && angle <= 35) {
-                    newMask = this.BUTTONS.DPAD_RIGHT;
-                } else if (angle >= 55 && angle <= 125) {
-                    newMask = this.BUTTONS.DPAD_DOWN;
-                } else if (angle >= -125 && angle <= -55) {
-                    newMask = this.BUTTONS.DPAD_UP;
-                } else if (angle >= 145 || angle <= -145) {
-                    newMask = this.BUTTONS.DPAD_LEFT;
-                } else if (isCornerPush) {
-                    // Deliberate 20° corner diagonals (only triggered when pressing into the corner)
-                    if (angle > -55 && angle < -35) {
+                // Outer circle zone gives generous 40° diagonal sectors for simultaneous dual-direction clicks
+                if (isOuterSide) {
+                    if (angle > -70 && angle < -20) {
                         newMask = this.BUTTONS.DPAD_UP | this.BUTTONS.DPAD_RIGHT;
-                    } else if (angle > 35 && angle < 55) {
+                    } else if (angle > 20 && angle < 70) {
                         newMask = this.BUTTONS.DPAD_DOWN | this.BUTTONS.DPAD_RIGHT;
-                    } else if (angle > 125 && angle < 145) {
+                    } else if (angle > 110 && angle < 160) {
                         newMask = this.BUTTONS.DPAD_DOWN | this.BUTTONS.DPAD_LEFT;
-                    } else if (angle > -145 && angle < -125) {
+                    } else if (angle > -160 && angle < -110) {
                         newMask = this.BUTTONS.DPAD_UP | this.BUTTONS.DPAD_LEFT;
                     }
-                } else {
-                    // Between sectors without deep push: snap to dominant cardinal
-                    if (angle > -55 && angle < -35) {
-                        newMask = (Math.abs(angle + 55) < Math.abs(angle + 35)) ? this.BUTTONS.DPAD_UP : this.BUTTONS.DPAD_RIGHT;
-                    } else if (angle > 35 && angle < 55) {
-                        newMask = (Math.abs(angle - 35) < Math.abs(angle - 55)) ? this.BUTTONS.DPAD_RIGHT : this.BUTTONS.DPAD_DOWN;
-                    } else if (angle > 125 && angle < 145) {
-                        newMask = (Math.abs(angle - 125) < Math.abs(angle - 145)) ? this.BUTTONS.DPAD_DOWN : this.BUTTONS.DPAD_LEFT;
-                    } else if (angle > -145 && angle < -125) {
-                        newMask = (Math.abs(angle + 125) < Math.abs(angle + 145)) ? this.BUTTONS.DPAD_UP : this.BUTTONS.DPAD_LEFT;
+                }
+
+                if (newMask === 0) {
+                    if (angle >= -45 && angle <= 45) {
+                        newMask = this.BUTTONS.DPAD_RIGHT;
+                    } else if (angle >= 45 && angle <= 135) {
+                        newMask = this.BUTTONS.DPAD_DOWN;
+                    } else if (angle >= -135 && angle <= -45) {
+                        newMask = this.BUTTONS.DPAD_UP;
+                    } else {
+                        newMask = this.BUTTONS.DPAD_LEFT;
                     }
                 }
             }
@@ -417,7 +411,7 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            containerEl.setPointerCapture(e.pointerId);
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
             updateDpad(e);
         });
 
@@ -429,6 +423,115 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerup', releaseDpad);
         containerEl.addEventListener('pointercancel', releaseDpad);
+    }
+
+    // Tactile D-Pad Style ABXY Cross (Y=Up, A=Down, X=Left, B=Right)
+    // Touching direct cardinal zones fires single buttons; touching outer circle/sides fires dual-button chords (A+B, X+Y, Y+B, A+X)
+    bindDpadAbxyElement(containerEl) {
+        let activeMask = 0;
+
+        const updateDpadAbxy = (e) => {
+            const rect = containerEl.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const dx = e.clientX - centerX;
+            const dy = e.clientY - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            let newMask = 0;
+            let deadzone = 24;
+            const customGap = containerEl.style.getPropertyValue('--dpad-gap');
+            if (customGap) {
+                deadzone = Math.max(12, parseInt(customGap) * 1.5);
+            }
+
+            const maxRadius = Math.max(rect.width, rect.height) / 2;
+            const isOuterSide = dist > (deadzone + (maxRadius - deadzone) * 0.35);
+
+            if (dist > deadzone) {
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI); // -180 to 180 deg
+
+                // Outer circle zone triggers simultaneous dual-button chords
+                if (isOuterSide) {
+                    if (angle > -70 && angle < -20) {
+                        newMask = this.BUTTONS.Y | this.BUTTONS.B; // Top-Right: Y + B
+                    } else if (angle > 20 && angle < 70) {
+                        newMask = this.BUTTONS.A | this.BUTTONS.B; // Bottom-Right: A + B
+                    } else if (angle > 110 && angle < 160) {
+                        newMask = this.BUTTONS.A | this.BUTTONS.X; // Bottom-Left: A + X
+                    } else if (angle > -160 && angle < -110) {
+                        newMask = this.BUTTONS.Y | this.BUTTONS.X; // Top-Left: Y + X
+                    }
+                }
+
+                if (newMask === 0) {
+                    if (angle >= -45 && angle <= 45) {
+                        newMask = this.BUTTONS.B; // East = B (Right)
+                    } else if (angle >= 45 && angle <= 135) {
+                        newMask = this.BUTTONS.A; // South = A (Bottom)
+                    } else if (angle >= -135 && angle <= -45) {
+                        newMask = this.BUTTONS.Y; // North = Y (Top)
+                    } else {
+                        newMask = this.BUTTONS.X; // West = X (Left)
+                    }
+                }
+            }
+
+            if (newMask !== activeMask) {
+                const abxyClear = ~(this.BUTTONS.A | this.BUTTONS.B | this.BUTTONS.X | this.BUTTONS.Y);
+                this.state.buttons = (this.state.buttons & abxyClear) | newMask;
+                activeMask = newMask;
+                this.emitState();
+
+                // Update visual glowing highlights on active wings
+                const elY = containerEl.querySelector('.dpad-abxy-y');
+                if (elY) elY.classList.toggle('active', (newMask & this.BUTTONS.Y) !== 0);
+                const elA = containerEl.querySelector('.dpad-abxy-a');
+                if (elA) elA.classList.toggle('active', (newMask & this.BUTTONS.A) !== 0);
+                const elX = containerEl.querySelector('.dpad-abxy-x');
+                if (elX) elX.classList.toggle('active', (newMask & this.BUTTONS.X) !== 0);
+                const elB = containerEl.querySelector('.dpad-abxy-b');
+                if (elB) elB.classList.toggle('active', (newMask & this.BUTTONS.B) !== 0);
+
+                if (newMask !== 0) {
+                    this.triggerHaptic(14);
+                }
+            }
+        };
+
+        const releaseDpadAbxy = () => {
+            if (activeMask !== 0) {
+                const abxyClear = ~(this.BUTTONS.A | this.BUTTONS.B | this.BUTTONS.X | this.BUTTONS.Y);
+                this.state.buttons &= abxyClear;
+                activeMask = 0;
+                this.emitState();
+
+                const elY = containerEl.querySelector('.dpad-abxy-y');
+                if (elY) elY.classList.remove('active');
+                const elA = containerEl.querySelector('.dpad-abxy-a');
+                if (elA) elA.classList.remove('active');
+                const elX = containerEl.querySelector('.dpad-abxy-x');
+                if (elX) elX.classList.remove('active');
+                const elB = containerEl.querySelector('.dpad-abxy-b');
+                if (elB) elB.classList.remove('active');
+            }
+        };
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
+            updateDpadAbxy(e);
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (e.buttons > 0 || e.pressure > 0) {
+                updateDpadAbxy(e);
+            }
+        });
+
+        containerEl.addEventListener('pointerup', releaseDpadAbxy);
+        containerEl.addEventListener('pointercancel', releaseDpadAbxy);
     }
 
     // High-resolution multi-touch trackpad (PS4/PS5 1920x942 coordinate space + gestures)
@@ -467,7 +570,7 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            containerEl.setPointerCapture(e.pointerId);
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
 
             const rect = containerEl.getBoundingClientRect();
             const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -613,7 +716,7 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            containerEl.setPointerCapture(e.pointerId);
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
             containerEl.classList.add('touch-active');
             updateTouch(e);
         });
@@ -687,7 +790,7 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            containerEl.setPointerCapture(e.pointerId);
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
             containerEl.classList.add('touch-active');
             updateTouch(e);
         });
@@ -726,7 +829,7 @@ class TouchEngine {
 
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            containerEl.setPointerCapture(e.pointerId);
+            try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
             isTouching = true;
             lastY = e.clientY;
             lastX = e.clientX;
