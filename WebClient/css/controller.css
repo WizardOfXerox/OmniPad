@@ -132,6 +132,11 @@ body {
     gap: 8px;
     z-index: 1000;
     pointer-events: auto;
+    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.toolbar-open #floating-hud {
+    top: 58px;
 }
 
 .status-pill {
