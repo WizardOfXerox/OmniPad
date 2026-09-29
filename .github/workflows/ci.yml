@@ -1,11 +1,15 @@
-name: OmniPad CI
+name: OmniPad CI & Release
 
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   # =========================================================================
@@ -131,3 +135,24 @@ jobs:
           name: OmniPad-Portable-Universal
           path: OmniPad-Portable.zip
           if-no-files-found: error
+
+      - name: Copy Standalone APK for Release
+        run: |
+          if (Test-Path "dist/OmniPad-Portable/apks/OmniPad.apk") {
+            Copy-Item -Path "dist/OmniPad-Portable/apks/OmniPad.apk" -Destination "OmniPad.apk" -Force
+          }
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "OmniPad ${{ github.ref_name }}"
+          files: |
+            OmniPad-Portable.zip
+            OmniPad.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
