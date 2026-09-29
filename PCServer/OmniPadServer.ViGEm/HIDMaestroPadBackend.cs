@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using System.Collections.Generic;
 using HIDMaestro;
@@ -170,3 +171,4 @@ public sealed class HIDMaestroPadBackend : IPadBackend
             throw new ArgumentOutOfRangeException(nameof(slot), $"Slot must be between 0 and {IPadBackend.MaxPads - 1}");
     }
 }
+#endif

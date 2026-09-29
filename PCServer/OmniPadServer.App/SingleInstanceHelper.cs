@@ -1,21 +1,40 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace OmniPadServer.App;
 
+public sealed class SingleInstanceLock : IDisposable
+{
+    private readonly Mutex? _mutex;
+    private readonly FileStream? _fileStream;
+
+    public SingleInstanceLock(Mutex mutex) => _mutex = mutex;
+    public SingleInstanceLock(FileStream fileStream) => _fileStream = fileStream;
+
+    public void Dispose()
+    {
+        try { _mutex?.ReleaseMutex(); } catch { }
+        try { _mutex?.Dispose(); } catch { }
+        try { _fileStream?.Dispose(); } catch { }
+    }
+}
+
 /// <summary>
-/// Manages single-instance lifecycle for OmniPadServer.
+/// Manages single-instance lifecycle for OmniPadServer cross-platform.
+/// On Windows: Employs named mutex with local fallback.
+/// On Linux/macOS: Employs exclusive advisory file locking on /tmp/omnipad_server.lock.
 /// Prevents port collision crashes (10048 / AddressInUseException) when multiple instances are launched.
 /// </summary>
 public static class SingleInstanceHelper
 {
     private const string MutexName = @"Global\OmniPadServer_SingleInstance_Mutex";
-    private static Mutex? _mutex;
+    private static SingleInstanceLock? _activeLock;
 
+#if WINDOWS
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
@@ -23,33 +42,24 @@ public static class SingleInstanceHelper
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     private const int SW_RESTORE = 9;
+#endif
 
     /// <summary>
     /// Checks if another instance is already running. If so, provides a user-friendly prompt or auto-takeover.
     /// Returns true if this instance can safely proceed to start; false if it should exit.
     /// </summary>
-    public static bool TryAcquireOrResolve(string[] args, out Mutex? acquiredMutex)
+    public static bool TryAcquireOrResolve(string[] args, out IDisposable? acquiredLock)
     {
-        acquiredMutex = null;
-        bool isInitialInstance;
-
-        try
-        {
-            _mutex = new Mutex(true, MutexName, out isInitialInstance);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // If mutex was created with different user permissions, fall back to local scope
-            _mutex = new Mutex(true, @"Local\OmniPadServer_SingleInstance_Mutex", out isInitialInstance);
-        }
+        acquiredLock = null;
+        bool isInitialInstance = TryAcquireLock(out _activeLock);
 
         if (isInitialInstance)
         {
-            acquiredMutex = _mutex;
+            acquiredLock = _activeLock;
             return true;
         }
 
-        // Another instance is holding the mutex
+        // Another instance is holding the lock
         var currentProc = Process.GetCurrentProcess();
         var existingProc = Process.GetProcessesByName(currentProc.ProcessName)
             .FirstOrDefault(p => p.Id != currentProc.Id);
@@ -68,18 +78,13 @@ public static class SingleInstanceHelper
             KillProcessAndChildren(existingProc);
             Thread.Sleep(600);
 
-            // Re-attempt mutex acquisition
-            try
+            // Re-attempt lock acquisition
+            _activeLock?.Dispose();
+            if (TryAcquireLock(out _activeLock))
             {
-                _mutex?.Dispose();
-                _mutex = new Mutex(true, MutexName, out isInitialInstance);
-                if (isInitialInstance)
-                {
-                    acquiredMutex = _mutex;
-                    return true;
-                }
+                acquiredLock = _activeLock;
+                return true;
             }
-            catch { }
         }
 
         // Display user-friendly collision screen instead of unhandled SocketException
@@ -104,7 +109,7 @@ public static class SingleInstanceHelper
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("  Options:");
         Console.WriteLine("    [K]  Terminate existing instance and start server here");
-        if (existingProc != null && existingProc.MainWindowHandle != IntPtr.Zero)
+        if (OperatingSystem.IsWindows() && existingProc != null && existingProc.MainWindowHandle != IntPtr.Zero)
         {
             Console.WriteLine("    [F]  Bring existing OmniPad window to foreground");
         }
@@ -116,7 +121,7 @@ public static class SingleInstanceHelper
         if (Console.IsInputRedirected)
         {
             Console.WriteLine("  Input is redirected. Exiting safely to prevent port conflict.");
-            _mutex?.Dispose();
+            _activeLock?.Dispose();
             return false;
         }
 
@@ -143,34 +148,35 @@ public static class SingleInstanceHelper
                         Thread.Sleep(800);
                     }
 
-                    try
+                    _activeLock?.Dispose();
+                    if (TryAcquireLock(out _activeLock))
                     {
-                        _mutex?.Dispose();
-                        _mutex = new Mutex(true, MutexName, out isInitialInstance);
-                        acquiredMutex = _mutex;
+                        acquiredLock = _activeLock;
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("  [+] Ports freed successfully. Starting OmniPad Server...");
                         Console.ResetColor();
                         Console.WriteLine();
                         return true;
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Console.WriteLine($"  Error acquiring lock: {ex.Message}");
+                        Console.WriteLine("  Error acquiring lock after terminating existing instance.");
                     }
                 }
-                else if (key == ConsoleKey.F && existingProc != null && existingProc.MainWindowHandle != IntPtr.Zero)
+#if WINDOWS
+                else if (OperatingSystem.IsWindows() && key == ConsoleKey.F && existingProc != null && existingProc.MainWindowHandle != IntPtr.Zero)
                 {
                     ShowWindow(existingProc.MainWindowHandle, SW_RESTORE);
                     SetForegroundWindow(existingProc.MainWindowHandle);
                     Console.WriteLine("  Brought existing OmniPad window to front. Exiting this window.");
-                    _mutex?.Dispose();
+                    _activeLock?.Dispose();
                     return false;
                 }
+#endif
                 else
                 {
                     Console.WriteLine("  Exiting. Existing instance continues running.");
-                    _mutex?.Dispose();
+                    _activeLock?.Dispose();
                     return false;
                 }
             }
@@ -179,8 +185,70 @@ public static class SingleInstanceHelper
         }
 
         Console.WriteLine("\n  Timed out. Exiting safely. Existing OmniPad instance continues running.");
-        _mutex?.Dispose();
+        _activeLock?.Dispose();
         return false;
+    }
+
+    private static bool TryAcquireLock(out SingleInstanceLock? instanceLock)
+    {
+        instanceLock = null;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                var mutex = new Mutex(true, MutexName, out bool createdNew);
+                if (createdNew)
+                {
+                    instanceLock = new SingleInstanceLock(mutex);
+                    return true;
+                }
+                mutex.Dispose();
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                try
+                {
+                    var mutex = new Mutex(true, @"Local\OmniPadServer_SingleInstance_Mutex", out bool createdNew);
+                    if (createdNew)
+                    {
+                        instanceLock = new SingleInstanceLock(mutex);
+                        return true;
+                    }
+                    mutex.Dispose();
+                    return false;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // Linux and macOS: cross-platform exclusive file lock
+            try
+            {
+                string lockPath = Path.Combine(Path.GetTempPath(), "omnipad_server.lock");
+                var fs = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                instanceLock = new SingleInstanceLock(fs);
+                return true;
+            }
+            catch (IOException)
+            {
+                // File locked by another process
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 
     private static void KillProcessAndChildren(Process proc)

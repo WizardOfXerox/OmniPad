@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -252,3 +253,4 @@ public static class DiagnosticScanner
         return list;
     }
 }
+#endif

@@ -31,7 +31,7 @@ public class UpdaterTests
         {
             var info = await UpdateChecker.CheckForUpdatesAsync(tempDir);
             Assert.NotNull(info);
-            Assert.Equal("1.2.0", info.CurrentVersion);
+            Assert.Equal(UpdateChecker.DefaultCurrentVersion, info.CurrentVersion);
         }
         finally
         {

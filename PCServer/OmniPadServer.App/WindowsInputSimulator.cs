@@ -186,6 +186,18 @@ public static class WindowsInputSimulator
     public static void MouseMove(short dx, short dy)
     {
         if (dx == 0 && dy == 0) return;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            OmniPadServer.ViGEm.MacInputSimulator.MouseMove(dx, dy);
+            return;
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            OmniPadServer.ViGEm.LinuxUinputMouseKeyboardBackend.SendMouseMove(dx, dy);
+            return;
+        }
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+
         EnsureWorkerRunning();
         _queue.Add(new InputCommand(InputType.Move, dx, dy));
     }
@@ -193,6 +205,18 @@ public static class WindowsInputSimulator
     public static void MouseButton(byte buttonMask, bool isDown)
     {
         if (buttonMask == 0) return;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            OmniPadServer.ViGEm.MacInputSimulator.MouseButton(buttonMask, isDown);
+            return;
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            OmniPadServer.ViGEm.LinuxUinputMouseKeyboardBackend.SendMouseButton(buttonMask, isDown);
+            return;
+        }
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+
         EnsureWorkerRunning();
         _queue.Add(new InputCommand(InputType.Button, 0, 0, buttonMask, isDown));
     }
@@ -200,6 +224,18 @@ public static class WindowsInputSimulator
     public static void MouseWheel(short delta)
     {
         if (delta == 0) return;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            OmniPadServer.ViGEm.MacInputSimulator.MouseWheel(delta);
+            return;
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            OmniPadServer.ViGEm.LinuxUinputMouseKeyboardBackend.SendMouseWheel(delta);
+            return;
+        }
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+
         EnsureWorkerRunning();
         _queue.Add(new InputCommand(InputType.Wheel, 0, delta));
     }
@@ -207,6 +243,18 @@ public static class WindowsInputSimulator
     public static void KeyboardKey(ushort vkCode, bool isDown)
     {
         if (vkCode == 0) return;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            OmniPadServer.ViGEm.MacInputSimulator.KeyboardKey(vkCode, isDown, isVk: true);
+            return;
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            OmniPadServer.ViGEm.LinuxUinputMouseKeyboardBackend.SendKeyboardKey(vkCode, isDown);
+            return;
+        }
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+
         EnsureWorkerRunning();
         _queue.Add(new InputCommand(InputType.Key, 0, 0, 0, isDown, vkCode));
     }

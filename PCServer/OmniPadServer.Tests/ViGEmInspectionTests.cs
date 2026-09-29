@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using System.Reflection;
 using Nefarius.ViGEm.Client.Targets;
@@ -38,3 +39,4 @@ public class ViGEmDualShock4Tests
         }
     }
 }
+#endif

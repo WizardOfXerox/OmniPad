@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "releaseDate": "2026-09-30",
-  "title": "OmniPad 1.2.0 - Universal Phone Gamepad",
-  "notes": "Tournament-grade virtual controller with zero-latency binary UDP, ViGEmBus kernel Xbox 360/DualShock 4 emulation, DSU Cemuhook gyro, dynamic virtual touchpad, and WebRTC streaming.",
+  "title": "OmniPad 1.3.0 - Linux, iOS & macOS Cross-Platform Release",
+  "notes": "Expanded cross-platform support: native Linux /dev/uinput virtual controller engine (Xbox 360/DualShock 4 zero-driver on Ubuntu/Steam Deck), native iOS client app (SwiftUI, NWConnection UDP, CoreHaptics, volume button bumpers), and macOS CGEvent input simulation.",
   "downloadUrl": "https://github.com/WizardOfXerox/OmniPad/releases/latest/download/OmniPad-Portable.zip",
   "repository": "https://github.com/WizardOfXerox/OmniPad"
 }

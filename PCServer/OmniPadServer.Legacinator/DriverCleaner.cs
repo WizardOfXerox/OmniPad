@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -205,3 +206,4 @@ public static class DriverCleaner
         }
     }
 }
+#endif

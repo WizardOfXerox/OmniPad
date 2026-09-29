@@ -3,10 +3,13 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+#if WINDOWS
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+#endif
 
 namespace OmniPadServer.App;
 
@@ -16,10 +19,12 @@ namespace OmniPadServer.App;
 /// </summary>
 public sealed class MicStreamServer : IAsyncDisposable
 {
+#if WINDOWS
     private readonly WaveFormat _waveFormat = new(16000, 16, 1); // 16kHz, 16-bit, Mono
     private BufferedWaveProvider? _waveProvider;
     private WasapiOut? _waveOut;
     private MMDevice? _targetDevice;
+#endif
     private readonly object _lock = new();
     private int _activeStreamers;
     private TcpListener? _tcpListener;
@@ -79,10 +84,12 @@ public sealed class MicStreamServer : IAsyncDisposable
                 {
                     int read = await stream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false);
                     if (read <= 0) break;
+#if WINDOWS
                     lock (_lock)
                     {
                         _waveProvider?.AddSamples(buffer, 0, read);
                     }
+#endif
                 }
             }
             catch { }
@@ -90,6 +97,7 @@ public sealed class MicStreamServer : IAsyncDisposable
 
         Console.WriteLine("[-] Microphone stream disconnected");
         Interlocked.Decrement(ref _activeStreamers);
+#if WINDOWS
         lock (_lock)
         {
             if (_activeStreamers <= 0 && _waveOut != null)
@@ -104,12 +112,19 @@ public sealed class MicStreamServer : IAsyncDisposable
                 _waveProvider = null;
             }
         }
+#endif
     }
 
     private void EnsureOutputRunning()
     {
+#if WINDOWS
         lock (_lock)
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
             if (_waveOut != null) return;
 
             try
@@ -153,6 +168,7 @@ public sealed class MicStreamServer : IAsyncDisposable
                 Console.WriteLine($"[MicStreamServer] Failed to initialize audio output: {ex.Message}");
             }
         }
+#endif
     }
 
     public async Task HandleWebSocketAsync(WebSocket socket)
@@ -174,10 +190,12 @@ public sealed class MicStreamServer : IAsyncDisposable
 
                 if (result.MessageType == WebSocketMessageType.Binary && result.Count > 0)
                 {
+#if WINDOWS
                     lock (_lock)
                     {
                         _waveProvider?.AddSamples(buffer, 0, result.Count);
                     }
+#endif
                 }
             }
         }
@@ -188,6 +206,7 @@ public sealed class MicStreamServer : IAsyncDisposable
         finally
         {
             Interlocked.Decrement(ref _activeStreamers);
+#if WINDOWS
             lock (_lock)
             {
                 if (_activeStreamers <= 0 && _waveOut != null)
@@ -204,6 +223,7 @@ public sealed class MicStreamServer : IAsyncDisposable
                     _waveProvider = null;
                 }
             }
+#endif
         }
     }
 
@@ -211,6 +231,7 @@ public sealed class MicStreamServer : IAsyncDisposable
     {
         _cts?.Cancel();
         _tcpListener?.Stop();
+#if WINDOWS
         lock (_lock)
         {
             try
@@ -224,6 +245,7 @@ public sealed class MicStreamServer : IAsyncDisposable
             _waveOut = null;
             _waveProvider = null;
         }
+#endif
         return ValueTask.CompletedTask;
     }
 }

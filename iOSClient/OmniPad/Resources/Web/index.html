@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>OmniPad - Universal Gamepad</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="stylesheet" href="css/controller.css">
+    <style id="omnipad-user-custom-css"></style>
+</head>
+<body class="theme-stealth">
+    <!-- Floating Minimalist HUD (Always visible, non-blocking) -->
+    <div id="floating-hud">
+        <!-- Status & Drawer Trigger Pill -->
+        <div id="status-pill" class="status-pill disconnected" title="Tap to toggle toolbar">
+            <span class="status-dot"></span>
+            <span id="status-text">Connecting...</span>
+            <span id="ping-text" class="ping-badge">-- ms</span>
+            <span class="hud-toggle-icon">
+                <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </span>
+        </div>
+
+        <!-- Dedicated Player Slot Button (Opens Switcher Modal Directly) -->
+        <button id="slot-badge" class="slot-pill-btn" title="Player Controller Slot (Tap to Switch)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="slot-badge-text">P1</span>
+            <span class="slot-swap-symbol">⇄</span>
+        </button>
+
+        <!-- Quick Tools Dock (Unified minimalist glass dock) -->
+        <div class="hud-tools-dock">
+            <!-- Controller Headphone Jack (Audio Streaming Toggle) -->
+            <button id="btn-audio-jack" class="hud-dock-btn audio-jack-btn" title="Headphone Jack (Stream Game Audio to Phone)">
+                <svg class="audio-jack-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                </svg>
+                <span id="audio-jack-text" class="sr-only">Jack: OFF</span>
+            </button>
+
+            <!-- Wireless Microphone Toggle -->
+            <button id="btn-hud-mic" class="hud-dock-btn hud-feature-btn" title="Wireless Microphone (Stream Voice to PC)">
+                <svg class="hud-feature-icon mic-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <span id="hud-mic-text" class="sr-only">Mic: OFF</span>
+            </button>
+
+            <!-- Low-Latency Background Desktop Video Streaming Toggle -->
+            <button id="btn-hud-stream" class="hud-dock-btn hud-feature-btn" title="Game Background Streaming (Stream PC screen to gamepad)">
+                <svg class="hud-feature-icon stream-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span id="hud-stream-text" class="sr-only">Stream: OFF</span>
+            </button>
+
+            <!-- Virtual Mouse Trackpad Toggle -->
+            <button id="btn-hud-trackpad" class="hud-dock-btn hud-feature-btn" title="Virtual Mouse Trackpad Overlay">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="4"></rect>
+                    <line x1="12" y1="6" x2="12" y2="10"></line>
+                </svg>
+                <span class="sr-only">Mouse</span>
+            </button>
+
+            <!-- Virtual Keyboard Toggle -->
+            <button id="btn-hud-keyboard" class="hud-dock-btn hud-feature-btn" title="Virtual Gaming Keyboard">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="6" y1="8" x2="6.01" y2="8"></line>
+                    <line x1="10" y1="8" x2="10.01" y2="8"></line>
+                    <line x1="14" y1="8" x2="14.01" y2="8"></line>
+                    <line x1="18" y1="8" x2="18.01" y2="8"></line>
+                    <line x1="7" y1="16" x2="17" y2="16"></line>
+                </svg>
+                <span class="sr-only">Keys</span>
+            </button>
+
+            <!-- Hardware Gamepad & Touchpad Tester -->
+            <a href="/test-gamepad.html" target="_blank" id="btn-hud-tester" class="hud-dock-btn hud-feature-btn" title="Hardware Gamepad & Touchpad Tester" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="6" y1="12" x2="10" y2="12"></line>
+                    <line x1="8" y1="10" x2="8" y2="14"></line>
+                    <line x1="15" y1="13" x2="15.01" y2="13"></line>
+                    <line x1="18" y1="11" x2="18.01" y2="11"></line>
+                    <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+                </svg>
+                <span class="sr-only">Tester</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Collapsible Full Top Navigation Drawer (Hidden by default, slides down when toggled) -->
+    <header id="top-bar" class="collapsed">
+        <div class="hud-left">
+            <!-- Group 1: Layout & Multiplayer -->
+            <div class="hud-nav-group hud-group-layout">
+                <label class="preset-label" for="preset-selector">Preset:</label>
+                <select id="preset-selector">
+                    <optgroup label="Modern Consoles">
+                        <option value="xbox">Xbox 360 Standard</option>
+                        <option value="xbox_elite">Xbox Elite Series 2 (Paddles)</option>
+                        <option value="playstation">PlayStation DualShock (+ Touchpad)</option>
+                        <option value="ps5_dualsense">PS5 DualSense Pro (+ Touchpad)</option>
+                        <option value="switch_pro">Nintendo Switch Pro</option>
+                    </optgroup>
+                    <optgroup label="Fighting & Arcade">
+                        <option value="dual_dpad">D-Pad Dual Cross (Retro & Fighter)</option>
+                        <option value="arcade">Arcade Fightstick (Sanwa Vewlix)</option>
+                        <option value="neogeo_arcade">Neo Geo Arcade (4-Button MVS)</option>
+                        <option value="hitbox">Tekken Hitbox (8-Way)</option>
+                        <option value="sega_saturn">Sega Saturn / Genesis (6-Btn)</option>
+                    </optgroup>
+                    <optgroup label="Retro Consoles">
+                        <option value="gamecube">Nintendo GameCube</option>
+                        <option value="n64">Nintendo 64</option>
+                        <option value="snes_retro">Retro SNES / Classic</option>
+                        <option value="ps1_classic">PlayStation 1 Classic (PSX)</option>
+                        <option value="nes_retro">NES / Game Boy Classic</option>
+                    </optgroup>
+                    <optgroup label="Handhelds">
+                        <option value="joycon_dual">Nintendo Switch Joy-Cons Dual</option>
+                        <option value="ds_3ds">Nintendo 3DS / Dual Screen</option>
+                    </optgroup>
+                    <optgroup label="Action & Simulators">
+                        <option value="twinstick">Twin-Stick Shooter</option>
+                        <option value="fps">FPS Precision (Gyro)</option>
+                        <option value="racing">Racing Wheel & Pedals</option>
+                        <option value="hotas_flight">Flight Sim / HOTAS</option>
+                        <option value="mmo_action">MMO / RPG Action Bar</option>
+                    </optgroup>
+                    <optgroup label="Utility & Diagnostics">
+                        <option value="touchpad_only">Touchpad-Only (Edge-to-Edge)</option>
+                        <option value="trackpad">Couch Desktop Mouse</option>
+                        <option value="debug_all">Diagnostic & Debug (All Controls)</option>
+                    </optgroup>
+                    <optgroup label="Custom Presets" id="optgroup-custom-presets">
+                        <!-- Populated dynamically -->
+                    </optgroup>
+                </select>
+                <button id="btn-topbar-slot" class="hud-btn hud-slot-btn" title="Switch Player Slot">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span id="topbar-slot-text">P1</span>
+                </button>
+                <button id="btn-topbar-share" class="hud-btn hud-share-btn" title="Beam / Share Layout Wirelessly">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    </span>
+                    <span>Beam</span>
+                </button>
+            </div>
+
+            <!-- Group 2: Connectivity & System Tools -->
+            <div class="hud-nav-group hud-group-tools">
+                <button id="btn-topbar-connectivity" class="hud-btn hud-conn-btn" title="Switch Connection Mode (USB, WiFi, Bluetooth, Offline)">
+                    <span id="topbar-conn-icon" class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    </span>
+                    <span id="topbar-conn-text">Auto</span>
+                </button>
+                <button id="btn-topbar-stream" class="hud-btn hud-stream-btn" title="Game Background Streaming">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    </span>
+                    <span id="topbar-stream-text">Stream</span>
+                </button>
+                <button id="btn-topbar-mic" class="hud-btn hud-mic-btn" title="Wireless Microphone">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </span>
+                    <span id="topbar-mic-text">Mic</span>
+                </button>
+                <button id="btn-topbar-trackpad" class="hud-btn hud-trackpad-btn" title="Virtual Mouse Trackpad">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="4"></rect><line x1="12" y1="6" x2="12" y2="10"></line></svg>
+                    </span>
+                    <span>Mouse</span>
+                </button>
+                <button id="btn-topbar-keyboard" class="hud-btn hud-kb-btn" title="Virtual Gaming Keyboard">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                    </span>
+                    <span>Keys</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="hud-right">
+            <button id="btn-edit-mode" class="hud-btn" title="Edit Layout">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                <span>Edit</span>
+            </button>
+            <button id="btn-settings" class="hud-btn" title="Settings">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span>Settings</span>
+            </button>
+            <button id="btn-fullscreen" class="hud-btn" title="Fullscreen">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            </button>
+            <button id="btn-hide-topbar" class="hud-btn hud-btn-close" title="Hide Toolbar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Low-Latency Background Desktop Video Streaming Canvas -->
+    <canvas id="game-stream-canvas" class="game-stream-canvas hidden"></canvas>
+
+    <!-- Canvas Workspace for Virtual Gamepad Controls (Takes 100% full screen) -->
+    <main id="gamepad-container">
+        <!-- Rendered dynamically by active layout or custom profile -->
+    </main>
+
+    <!-- Edit Mode Toolbar (Two-Tier Ergonomic Architecture: 100% visible buttons) -->
+    <aside id="edit-toolbar" class="hidden">
+        <div class="toolbar-content">
+            <!-- Tier 1: Global Actions & Spawner (Always 100% visible on screen) -->
+            <div class="toolbar-tier toolbar-global-tier">
+                <div class="toolbar-global-left">
+                    <span class="toolbar-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        <span>Editor</span>
+                    </span>
+
+                    <select id="select-add-control" class="toolbar-select" title="Add Control to Canvas">
+                        <option value="" disabled selected>+ Add Control...</option>
+                        <optgroup label="Buttons & Triggers">
+                            <option value="btn_standard">Standard Button</option>
+                            <option value="btn_paddle">Rear Grip Paddle (P1-P4)</option>
+                            <option value="btn_toggle">Toggle / Latch Button</option>
+                            <option value="btn_turbo">Turbo Rapid-Fire Button</option>
+                            <option value="btn_hold_dual">Hold-Dual Action Button</option>
+                            <option value="btn_shoulder">Shoulder Bumper (LB/RB)</option>
+                        </optgroup>
+                        <optgroup label="Touchpads & Multi-Modal">
+                            <option value="tp_scroll">Scroll Wheel Trackpad</option>
+                            <option value="tp_dpad">D-Pad Trackpad</option>
+                            <option value="tp_abxy">ABXY Diamond Trackpad</option>
+                            <option value="tp_mouse">Mouse / Camera Trackpad</option>
+                        </optgroup>
+                        <optgroup label="Sticks & D-Pads">
+                            <option value="ctrl_left_stick">Left Analog Stick</option>
+                            <option value="ctrl_right_stick">Right Analog Stick</option>
+                            <option value="ctrl_dpad">Embossed D-Pad</option>
+                            <option value="ctrl_dpad_abxy">D-Pad Style ABXY Cross</option>
+                        </optgroup>
+                        <optgroup label="Combos & Macros">
+                            <option value="ctrl_combo">Combo Chord (e.g. X+Y)</option>
+                            <option value="ctrl_macro">Timed Macro Button</option>
+                        </optgroup>
+                        <optgroup label="Special Functions">
+                            <option value="fn_mute">Audio Jack Mute Toggle</option>
+                            <option value="fn_recenter">Gyro Recenter Button</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="toolbar-btn-cluster">
+                    <button id="btn-save-layout" class="tool-btn btn-success" title="Save Layout Changes">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Save</span>
+                    </button>
+                    <button id="btn-save-as-new" class="tool-btn" title="Save as New Preset">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Save As...</span>
+                    </button>
+                    <button id="btn-toolbar-export" class="tool-btn" title="Export Preset (JSON)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export</span>
+                    </button>
+                    <button id="btn-toolbar-import" class="tool-btn" title="Import Preset (JSON)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>Import</span>
+                    </button>
+                    <button id="btn-reset-layout" class="tool-btn btn-danger" title="Reset to Preset Default">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        <span>Reset</span>
+                    </button>
+                    <button id="btn-exit-edit" class="tool-btn btn-accent" title="Done / Exit Editing">
+                        <span>Done</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tier 2: Contextual Element Inspector & Live Sliders (Active when element is selected) -->
+            <div class="toolbar-tier toolbar-element-tier" id="toolbar-element-tier">
+                <div class="element-action-cluster">
+                    <span class="element-badge" id="toolbar-selected-label">Select a Control</span>
+                    <button id="btn-inspect-element" class="tool-btn" title="Inspect & Remap Selected Element">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Remap</span>
+                    </button>
+                    <button id="btn-delete-element" class="tool-btn btn-danger" title="Delete Selected Element">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete</span>
+                    </button>
+                </div>
+
+                <div class="element-sliders-track">
+                    <label class="scale-label" title="Adjust Scale">Scale: <input type="range" id="comp-scale-slider" min="50" max="200" value="100"></label>
+                    <label class="scale-label dpad-only-ctrl" id="dpad-circlesize-label" style="display: none;" title="Adjust diameter of circular touch disc (expands touch surface)">Circle: <input type="range" id="dpad-circlesize-slider" min="100" max="260" value="148" step="4"></label>
+                    <label class="scale-label dpad-only-ctrl" id="dpad-discradius-label" style="display: none;" title="Adjust corner roundness of the disc">Shape: <input type="range" id="dpad-discradius-slider" min="10" max="50" value="50" step="5"></label>
+                    <label class="scale-label dpad-only-ctrl" id="dpad-spacing-label" style="display: none;" title="Adjust spacing between D-pad buttons">Spacing: <input type="range" id="dpad-spacing-slider" min="0" max="30" value="14" step="1"></label>
+                    <label class="scale-label dpad-only-ctrl" id="dpad-btnsize-label" style="display: none;" title="Adjust size of individual D-pad buttons">Btn Size: <input type="range" id="dpad-btnsize-slider" min="60" max="160" value="100" step="5"></label>
+                    <button id="dpad-bg-toggle" class="tool-btn dpad-only-ctrl" style="display: none;" title="Toggle Circular Background Disc">Disc: ON</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Settings & Macro Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-settings"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Controller Settings</h2>
+                <button id="btn-close-settings" class="close-btn" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="tab-general">General</button>
+                    <button class="tab-btn" data-tab="tab-engine">Engine &amp; Drivers</button>
+                    <button class="tab-btn" data-tab="tab-design">Design &amp; Themes</button>
+                    <button class="tab-btn" data-tab="tab-gyro">Gyro &amp; Motion</button>
+                    <button class="tab-btn" data-tab="tab-macros">Macros &amp; Combos</button>
+                    <button class="tab-btn" data-tab="tab-profiles">Profiles</button>
+                </div>
+
+                <!-- Tab: Engine & Drivers -->
+                <div id="tab-engine" class="tab-pane">
+                    <div class="setting-group">
+                        <label>Active Controller Profile Preset</label>
+                        <select id="setting-controller-preset">
+                            <optgroup label="Standard Gaming (Anti-Cheat & Games)">
+                                <option value="Xbox360_WHQL">Microsoft Xbox 360 (ViGEm KMDF WHQL)</option>
+                                <option value="DualShock4_WHQL">Sony DualShock 4 (ViGEm KMDF WHQL)</option>
+                            </optgroup>
+                            <optgroup label="PlayStation Suite">
+                                <option value="DualSense_PS5">Sony DualSense PS5 (Touchpad + Gyro)</option>
+                                <option value="DualSense_Edge">Sony DualSense Edge (Paddles + Touchpad)</option>
+                            </optgroup>
+                            <optgroup label="Nintendo Suite (Emulators & Smash)">
+                                <option value="Switch_Pro">Nintendo Switch Pro Controller (6-Axis Motion)</option>
+                                <option value="JoyCon_L">Nintendo Joy-Con Left</option>
+                                <option value="JoyCon_R">Nintendo Joy-Con Right</option>
+                                <option value="GameCube">Nintendo GameCube (Dolphin / Smash Bros)</option>
+                            </optgroup>
+                            <optgroup label="Pro Handhelds & Xbox Elite">
+                                <option value="SteamDeck">Valve Steam Deck (Dual Trackpads + Gyro)</option>
+                                <option value="Xbox_Elite_Series2">Xbox Elite Series 2 (4 Back Paddles)</option>
+                                <option value="Xbox_Series_XS">Xbox Series X|S Wireless Controller</option>
+                            </optgroup>
+                            <optgroup label="Simulations & Specialty">
+                                <option value="RacingWheel_Logitech">Logitech G29 Racing Wheel (Tilt-to-Steer Gyro)</option>
+                                <option value="FlightSim_HOTAS">Saitek X52 Pro HOTAS (Flight Stick & Throttle)</option>
+                                <option value="ArcadeStick_HORI">HORI Fighting Stick Alpha (Arcade 8-Btn)</option>
+                            </optgroup>
+                            <optgroup label="Zero-Driver Fallback">
+                                <option value="KeyboardMouse">Virtual Keyboard &amp; Mouse (SendInput)</option>
+                            </optgroup>
+                        </select>
+                        <p id="preset-description" class="hint" style="margin-top: 4px; font-size: 11px; color: #38bdf8;">
+                            Authentic controller emulation powered by HIDOmniPadBus.
+                        </p>
+                    </div>
+
+                    <div class="setting-group" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                        <label style="color: #f8fafc; font-size: 13px; font-weight: 600;">HIDOmniPadBus Driver Suite</label>
+                        <div style="margin: 6px 0; font-size: 12px; color: #cbd5e1;">
+                            Status: <span id="bus-driver-status-badge" style="display:inline-block; padding: 2px 8px; border-radius: 4px; background: #0284c7; color: white; font-weight: 600;">Detecting...</span>
+                        </div>
+                        <p id="bus-driver-summary" style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
+                            Managing ViGEmBus kernel driver and HIDMaestro UMDF2 driver.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-bus-install" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer;">Install / Repair Drivers</button>
+                            <button id="btn-bus-uninstall" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">Uninstall Drivers</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-group" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
+                        <label style="color: #f8fafc; font-size: 13px; font-weight: 600;">OmniPad Software Updater</label>
+                        <div style="margin: 6px 0; font-size: 12px; color: #cbd5e1;">
+                            Installed Version: <span id="updater-version-badge" style="font-weight: 600; color: #38bdf8;">v1.2.0</span>
+                        </div>
+                        <p id="updater-status-text" style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
+                            Check for server, web client, and driver updates.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-updater-check" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">Check for Updates</button>
+                            <button id="btn-updater-apply" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; display: none;">Update Now</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-group" id="bt-hid-settings-card" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2); margin-top: 10px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <label style="color: #f8fafc; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline></svg>
+                                Direct Bluetooth HID (Serverless)
+                            </label>
+                            <span id="bt-status-badge" style="display:inline-block; padding: 2px 8px; border-radius: 4px; background: #475569; color: white; font-size: 11px; font-weight: 600;">Standby</span>
+                        </div>
+                        <p id="bt-status-summary" style="font-size: 11px; color: #94a3b8; margin: 8px 0;">
+                            Turn your Android device into a physical Bluetooth gamepad. Connect directly to PC, Mac, Switch, or Smart TV without running OmniPadServer.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-bt-enable" class="btn" style="flex: 1; font-size: 11px; padding: 7px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Enable Bluetooth Mode</button>
+                            <button id="btn-bt-disable" class="btn" style="flex: 1; font-size: 11px; padding: 7px; background: #334155; color: #cbd5e1; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Switch to WiFi</button>
+                        </div>
+                        <div id="bt-host-info" style="margin-top: 8px; font-size: 11px; color: #38bdf8; display: none;">
+                            Connected Host: <strong id="bt-host-name">None</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: General -->
+                <div id="tab-general" class="tab-pane active">
+                    <div class="setting-group">
+                        <label>Connectivity &amp; Transport Mode</label>
+                        <select id="setting-connectivity-mode" data-picker-title="Select Connection Mode" data-picker-icon="bolt">
+                            <optgroup label="Physical Cable &amp; Wireless">
+                                <option value="auto">Auto-Detect (Fastest: USB ➔ WiFi ➔ Bluetooth)</option>
+                                <option value="usb">Wired USB Loopback (Ultra-Low Latency, ADB)</option>
+                                <option value="wifi">WiFi LAN (Local Network Server)</option>
+                            </optgroup>
+                            <optgroup label="Direct Hardware &amp; Standalone">
+                                <option value="bluetooth">Direct Bluetooth HID (Serverless Gamepad)</option>
+                                <option value="offline">Offline Standalone (Tester &amp; Customizer)</option>
+                            </optgroup>
+                        </select>
+                        <p class="hint" id="conn-mode-hint" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
+                            Select how OmniPad communicates with your gaming host.
+                        </p>
+                    </div>
+
+                    <div class="setting-group" id="group-server-selection">
+                        <label>Active PC Gaming Host</label>
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                            <button type="button" id="btn-switch-server" class="btn" style="flex: 1; padding: 10px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; cursor: pointer;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                <span id="label-switch-server">Switch Server</span>
+                            </button>
+                            <button type="button" id="btn-scan-qr" class="btn" style="flex: 1; padding: 10px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; cursor: pointer;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span>Scan QR Code</span>
+                            </button>
+                        </div>
+                        <p class="hint" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
+                            Discover and connect to other OmniPad PC servers or scan terminal QR code.
+                        </p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Visual Theme</label>
+                        <select id="setting-theme">
+                            <option value="theme-stealth">OLED Stealth (Pure Black)</option>
+                            <option value="theme-neon">Cyberpunk Neon</option>
+                            <option value="theme-xbox">Xbox Carbon & Green</option>
+                            <option value="theme-playstation">PlayStation Cobalt</option>
+                            <option value="theme-retro-gb">Classic Game Boy</option>
+                            <option value="theme-atomic-purple">Atomic Purple (Translucent)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Controller Size: <span id="val-controller-scale">100%</span></label>
+                        <input type="range" id="setting-controller-scale" min="70" max="150" value="100">
+                    </div>
+                    <div class="setting-group">
+                        <label>Inner Stick Deadzone: <span id="val-deadzone">8%</span></label>
+                        <input type="range" id="setting-deadzone" min="0" max="25" value="8">
+                    </div>
+                    <div class="setting-group checkbox">
+                        <label><input type="checkbox" id="setting-floating-stick" checked> Floating Joysticks (Spawn where thumb touches)</label>
+                    </div>
+                    <div class="setting-group checkbox">
+                        <label><input type="checkbox" id="setting-touch-haptics" checked> Touch Press Haptic Clicks</label>
+                    </div>
+                    <div class="setting-group checkbox">
+                        <label><input type="checkbox" id="setting-game-rumble" checked> Game Force Feedback (PC Rumble)</label>
+                    </div>
+                    <div class="setting-group">
+                        <label>Headphone Jack Volume: <span id="val-audio-volume">85%</span></label>
+                        <input type="range" id="setting-audio-volume" min="0" max="100" value="85">
+                    </div>
+                    <div class="setting-group">
+                        <label>Controller Opacity (Stream Transparency): <span id="val-control-opacity">85%</span></label>
+                        <input type="range" id="setting-control-opacity" min="10" max="100" value="85">
+                        <p class="hint">Adjust how transparent the controller buttons and sticks appear over the background game stream.</p>
+                    </div>
+                    <div class="setting-group">
+                        <label>Virtual Mouse Trackpad Sensitivity: <span id="val-trackpad-sens">1.4x</span></label>
+                        <input type="range" id="setting-trackpad-sens" min="5" max="35" value="14">
+                    </div>
+                    <div class="setting-group">
+                        <label>Screen Brightness Dimmer: <span id="val-brightness">100%</span></label>
+                        <input type="range" id="setting-brightness" min="15" max="100" value="100">
+                    </div>
+                </div>
+
+                <!-- Tab: Design & Themes -->
+                <div id="tab-design" class="tab-pane">
+                    <h3>Theme & CSS Studio</h3>
+                    <p class="hint">Customize controller colors, shapes, and inject your own custom CSS rules in real time.</p>
+                    
+                    <div class="setting-group">
+                        <label>Preset Visual Theme</label>
+                        <select id="studio-theme-select">
+                            <option value="theme-stealth">OLED Stealth (Pure Black)</option>
+                            <option value="theme-neon">Cyberpunk Neon</option>
+                            <option value="theme-xbox">Xbox Carbon & Green</option>
+                            <option value="theme-playstation">PlayStation Cobalt</option>
+                            <option value="theme-retro-gb">Classic Retro Game Boy</option>
+                            <option value="theme-atomic-purple">Atomic Purple (Translucent)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Accent & Glow Color</label>
+                        <div class="color-row">
+                            <input type="color" id="studio-accent-color" value="#00ff88" class="color-picker-input">
+                            <span id="val-studio-accent" class="code-badge">#00ff88</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Button Corner Radius: <span id="val-studio-radius">50%</span></label>
+                        <input type="range" id="studio-radius-slider" min="0" max="36" value="28">
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Button Background Tint</label>
+                        <div class="color-row">
+                            <input type="color" id="studio-btn-bg-color" value="#222222" class="color-picker-input">
+                            <span id="val-studio-btn-bg" class="code-badge">#222222</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Button Text / Glyph Color</label>
+                        <div class="color-row">
+                            <input type="color" id="studio-btn-text-color" value="#ffffff" class="color-picker-input">
+                            <span id="val-studio-btn-text" class="code-badge">#ffffff</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Live Custom CSS Overrides</label>
+                        <textarea id="custom-css-editor" class="code-editor" spellcheck="false" placeholder="/* Enter custom CSS rules here (affects all controller elements live) */&#10;.game-btn { border-color: #00ffff; }&#10;.joystick-base { box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); }"></textarea>
+                        <div class="css-studio-buttons" style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button id="btn-apply-custom-css" class="tool-btn btn-success">Apply CSS</button>
+                            <button id="btn-reset-custom-css" class="tool-btn btn-danger">Reset CSS</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Gyro -->
+                <div id="tab-gyro" class="tab-pane">
+                    <div class="setting-group">
+                        <label>Gyro Motion Mode</label>
+                        <select id="setting-gyro-mode">
+                            <option value="off">Disabled</option>
+                            <option value="aim">FPS Gyro Aiming (Right Stick)</option>
+                            <option value="steer">Racing Wheel Tilt (Left Stick)</option>
+                            <option value="mouse">Mouse Pointer (Desktop)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group checkbox">
+                        <label><input type="checkbox" id="setting-gyro-touch-only" checked> Capacitive Aim (Only active when touching aim pad)</label>
+                    </div>
+                    <div class="setting-group">
+                        <label>Horizontal Sensitivity: <span id="val-gyro-sens-x">1.0x</span></label>
+                        <input type="range" id="setting-gyro-sens-x" min="1" max="30" value="10">
+                    </div>
+                    <div class="setting-group">
+                        <label>Vertical Sensitivity: <span id="val-gyro-sens-y">1.0x</span></label>
+                        <input type="range" id="setting-gyro-sens-y" min="1" max="30" value="10">
+                    </div>
+                    <button id="btn-request-gyro" class="btn-primary">Calibrate / Request Sensor Permission</button>
+                </div>
+
+                <!-- Tab: Macros -->
+                <div id="tab-macros" class="tab-pane">
+                    <h3>Timed Macro Sequencer</h3>
+                    <p class="hint">Create millisecond-timed combos (e.g. Tekken EWGF, Slide-Cancel)</p>
+                    <div class="macro-builder">
+                        <input type="text" id="macro-name" placeholder="Macro Name (e.g. EWGF, SlideCancel)">
+                        <div id="macro-step-list" class="step-list">
+                            <!-- Macro steps rendered dynamically -->
+                        </div>
+                        <div class="macro-controls">
+                            <button id="btn-add-step" class="tool-btn">+ Add Step</button>
+                            <button id="btn-save-macro" class="tool-btn btn-success">Save Macro</button>
+                        </div>
+                    </div>
+                    <h4>Saved Macros</h4>
+                    <ul id="saved-macros-list"></ul>
+                </div>
+
+                <!-- Tab: Profiles -->
+                <div id="tab-profiles" class="tab-pane">
+                    <h3>Layout & Profile Management</h3>
+                    <p class="hint">Export, backup, share, or import custom controller profiles with themes included.</p>
+                    
+                    <div class="profile-actions-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                        <button id="btn-export-profile" class="btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Export JSON File
+                        </button>
+                        <button id="btn-copy-profile-clipboard" class="tool-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            Copy to Clipboard
+                        </button>
+                        <button id="btn-import-profile" class="btn-secondary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Upload JSON File
+                        </button>
+                        <button id="btn-open-paste-modal" class="tool-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                            Paste JSON Text
+                        </button>
+                        <input type="file" id="file-import-profile" style="display: none" accept=".json">
+                    </div>
+
+                    <h4>Saved Custom Presets</h4>
+                    <div id="custom-presets-list" class="profile-catalog-list">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer settings-footer">
+                <button id="btn-footer-close-settings" class="btn-primary" style="min-width: 160px;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Import / Export Preset -->
+    <div id="modal-import-export" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-import-export"></div>
+        <div class="modal-content import-export-card">
+            <div class="modal-header">
+                <h2>Import / Export Preset</h2>
+                <button id="btn-close-import-export" class="close-btn" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle">Share presets, themes, and custom layouts with JSON.</p>
+                <div class="import-export-actions-row">
+                    <button id="btn-modal-download-json" class="btn-primary">Download .json</button>
+                    <button id="btn-modal-copy-json" class="tool-btn">Copy to Clipboard</button>
+                    <button id="btn-modal-trigger-upload" class="tool-btn">Upload File</button>
+                    <input type="file" id="modal-file-upload" style="display: none;" accept=".json">
+                </div>
+                <textarea id="import-export-textarea" class="code-editor" placeholder="Paste preset JSON here to import, or copy from here to export..."></textarea>
+                <div class="import-export-footer">
+                    <button id="btn-modal-apply-import" class="btn-success">Import from Textarea</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Button Inspector & Remapper -->
+    <div id="modal-button-inspector" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-button-inspector"></div>
+        <div class="modal-content inspector-card">
+            <div class="modal-header">
+                <h2>Inspect & Remap Control</h2>
+                <button id="btn-close-inspector" class="close-btn" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>Control ID: <span id="insp-elem-id" class="code-badge">--</span></label>
+                </div>
+                <div class="setting-group">
+                    <label>Label Text</label>
+                    <input type="text" id="insp-elem-label" placeholder="e.g. A, SPRINT, HEAVY">
+                </div>
+                <div class="setting-group">
+                    <label>Button Behavior</label>
+                    <select id="insp-elem-behavior">
+                        <option value="momentary">Momentary (Standard Press/Release)</option>
+                        <option value="latch">Toggle / Latch (Tap to Lock ON/OFF)</option>
+                        <option value="turbo">Turbo / Rapid-Fire (20 Hz pulse while held)</option>
+                        <option value="hold_dual">Hold-Dual (Tap = Primary, Hold = Secondary)</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>Action / Primary Binding</label>
+                    <select id="insp-elem-binding">
+                        <optgroup label="Face Buttons">
+                            <option value="0x1000">A (South)</option>
+                            <option value="0x2000">B (East)</option>
+                            <option value="0x4000">X (West)</option>
+                            <option value="0x8000">Y (North)</option>
+                        </optgroup>
+                        <optgroup label="Shoulders & Triggers">
+                            <option value="0x0100">LB (Left Bumper)</option>
+                            <option value="0x0200">RB (Right Bumper)</option>
+                            <option value="trigger_lt">LT (Left Trigger Analog/Full)</option>
+                            <option value="trigger_rt">RT (Right Trigger Analog/Full)</option>
+                        </optgroup>
+                        <optgroup label="Rear Grip Paddles">
+                            <option value="paddle_p1">P1 (Rear Upper Left)</option>
+                            <option value="paddle_p2">P2 (Rear Upper Right)</option>
+                            <option value="paddle_p3">P3 (Rear Lower Left)</option>
+                            <option value="paddle_p4">P4 (Rear Lower Right)</option>
+                        </optgroup>
+                        <optgroup label="Stick Clicks">
+                            <option value="0x0040">LS Click (L3)</option>
+                            <option value="0x0080">RS Click (R3)</option>
+                        </optgroup>
+                        <optgroup label="D-Pad Directions">
+                            <option value="0x0001">D-Pad Up</option>
+                            <option value="0x0002">D-Pad Down</option>
+                            <option value="0x0004">D-Pad Left</option>
+                            <option value="0x0008">D-Pad Right</option>
+                        </optgroup>
+                        <optgroup label="Menu & System">
+                            <option value="0x0010">Start (Menu)</option>
+                            <option value="0x0020">Back (View / Select)</option>
+                            <option value="0x0400">Xbox Guide / PS Home</option>
+                        </optgroup>
+                        <optgroup label="Special Functions">
+                            <option value="fn_mute">Audio Jack Mute Toggle</option>
+                            <option value="fn_recenter">Gyro Aim Re-center</option>
+                            <option value="fn_turbo_toggle">Turbo Mode Toggle</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="setting-group" id="insp-secondary-group" style="display: none;">
+                    <label>Secondary Action (for Hold-Dual &gt;250ms)</label>
+                    <select id="insp-elem-secondary">
+                        <option value="0x8000">Y Button</option>
+                        <option value="0x4000">X Button</option>
+                        <option value="0x2000">B Button</option>
+                        <option value="0x1000">A Button</option>
+                        <option value="0x0100">LB Bumper</option>
+                        <option value="0x0200">RB Bumper</option>
+                        <option value="trigger_rt">RT Trigger</option>
+                    </select>
+                </div>
+                <div class="setting-group" id="insp-combo-group" style="display: none;">
+                    <label>Combo Buttons (comma-separated, e.g. LB,RB or X,A)</label>
+                    <input type="text" id="insp-elem-combo" placeholder="LB,RB">
+                </div>
+                <div class="setting-group" id="insp-macro-group" style="display: none;">
+                    <label>Assigned Macro</label>
+                    <select id="insp-elem-macro">
+                        <option value="macro_ewgf">EWGF (Tekken Electric)</option>
+                        <option value="macro_slide_cancel">Slide-Cancel (COD Sprint)</option>
+                        <option value="macro_hadouken">Hadouken (QCF + P)</option>
+                    </select>
+                </div>
+                <div class="setting-group-row">
+                    <div class="setting-col">
+                        <label>Width (px)</label>
+                        <input type="number" id="insp-elem-w" min="20" max="300" step="2">
+                    </div>
+                    <div class="setting-col">
+                        <label>Height (px)</label>
+                        <input type="number" id="insp-elem-h" min="20" max="300" step="2">
+                    </div>
+                </div>
+                <div class="inspector-footer">
+                    <button id="btn-inspector-apply" class="btn-success">Apply Changes</button>
+                    <button id="btn-inspector-delete" class="tool-btn btn-danger">Delete Element</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Player Switcher -->
+    <div id="modal-player-switch" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-player-switch"></div>
+        <div class="modal-content player-switch-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <h2>Controller Slots</h2>
+                </div>
+                <button id="btn-close-player-switch" class="btn-icon" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="player-switch-body">
+                <p class="modal-subtitle">Switch instantly to an open slot or swap with a connected player.</p>
+                <div id="player-slots-container" class="player-slots-grid">
+                    <!-- Rendered dynamically as 2x2 grid -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Incoming Swap Prompt -->
+    <div id="modal-swap-prompt" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-swap-prompt"></div>
+        <div class="modal-content swap-prompt-card">
+            <div class="swap-icon-badge">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
+            </div>
+            <h2 id="swap-prompt-title">Slot Swap Request</h2>
+            <p id="swap-prompt-desc">Player 1 wants to swap controller slots with you.</p>
+            <div class="swap-timer-wrapper">
+                <div class="swap-timer-bar-container">
+                    <div id="swap-timer-bar" class="swap-timer-bar"></div>
+                </div>
+                <span id="swap-timer-sec" class="swap-timer-sec">15s</span>
+            </div>
+            <div class="swap-actions">
+                <button id="btn-accept-swap" class="btn-swap-choice btn-accept">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Accept Swap</span>
+                </button>
+                <button id="btn-decline-swap" class="btn-swap-choice btn-decline">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>Decline</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Share Layout Target Selector -->
+    <div id="modal-share-layout-target" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-share-layout-target"></div>
+        <div class="modal-content player-switch-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                    <h2>Share Layout</h2>
+                </div>
+                <button id="btn-close-share-layout-target" class="btn-icon" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="player-switch-body">
+                <p class="modal-subtitle">Beam your active layout wirelessly to another connected player or broadcast to all.</p>
+                <div id="share-layout-targets-container" class="player-slots-grid">
+                    <!-- Rendered dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Incoming Layout Share Prompt -->
+    <div id="modal-layout-prompt" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-layout-prompt"></div>
+        <div class="modal-content swap-prompt-card layout-prompt-card">
+            <div class="swap-icon-badge layout-icon-badge">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2">
+                    <rect x="2" y="6" width="20" height="12" rx="4"/>
+                    <line x1="6" y1="12" x2="10" y2="12"/>
+                    <line x1="8" y1="10" x2="8" y2="14"/>
+                    <circle cx="16" cy="10" r="1" fill="currentColor"/>
+                    <circle cx="18" cy="12" r="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <h2 id="layout-prompt-title">Incoming Layout</h2>
+            <p id="layout-prompt-desc">Player 1 shared a controller layout with you.</p>
+            <div class="layout-prompt-preview">
+                <span class="layout-prompt-name" id="layout-prompt-name">Custom Layout</span>
+                <span class="layout-prompt-badge" id="layout-prompt-badge">0 controls</span>
+            </div>
+            <div class="swap-timer-wrapper">
+                <div class="swap-timer-bar-container">
+                    <div id="layout-timer-bar" class="swap-timer-bar"></div>
+                </div>
+                <span id="layout-timer-sec" class="swap-timer-sec">15s</span>
+            </div>
+            <div class="swap-actions">
+                <button id="btn-accept-layout" class="btn-swap-choice btn-accept">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Accept & Apply</span>
+                </button>
+                <button id="btn-decline-layout" class="btn-swap-choice btn-decline">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>Decline</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Universal Custom Gaming Picker (Replaces OS Native Select Dialogs) -->
+    <div id="modal-custom-picker" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-custom-picker"></div>
+        <div class="modal-content custom-picker-card">
+            <div class="modal-header custom-picker-header">
+                <div class="modal-title-wrap">
+                    <span id="custom-picker-icon" class="picker-header-icon"></span>
+                    <div>
+                        <h2 id="custom-picker-title">Select Preset</h2>
+                        <p id="custom-picker-subtitle" class="picker-header-subtitle">Choose a controller layout or profile</p>
+                    </div>
+                </div>
+                <button id="btn-close-custom-picker" class="btn-icon" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body custom-picker-body" id="custom-picker-items-container">
+                <!-- Categorized items with optgroup headers rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Virtual Mouse Trackpad Overlay -->
+    <div id="omnipad-trackpad-overlay" class="hidden">
+        <div class="trackpad-header">
+            <div class="trackpad-title-wrap" style="display: flex; align-items: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2">
+                    <rect x="5" y="2" width="14" height="20" rx="4"></rect>
+                    <line x1="12" y1="6" x2="12" y2="10"></line>
+                </svg>
+                <span style="font-weight: 700; font-size: 15px; margin-left: 8px; color: #f8fafc;">Virtual Mouse Trackpad</span>
+                <span class="code-badge" style="margin-left: 8px; font-size: 11px;">Zero-Driver</span>
+            </div>
+            <button id="btn-close-trackpad" class="btn-icon" title="Close Trackpad">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div id="trackpad-touch-surface" class="trackpad-touch-surface">
+            <div class="trackpad-hint">
+                <div style="font-size: 16px; font-weight: 600; color: #38bdf8; margin-bottom: 6px;">Touch &amp; Slide to Move Cursor</div>
+                <div>1-Finger Tap = Left Click &bull; 2-Finger Tap = Right Click</div>
+                <div>2-Finger Slide = Scroll Wheel &bull; Coexists with Physical Mouse</div>
+            </div>
+        </div>
+        <div class="trackpad-buttons-bar">
+            <button id="tp-btn-left-click" class="tp-click-btn">LEFT CLICK</button>
+            <button id="tp-btn-right-click" class="tp-click-btn">RIGHT CLICK</button>
+        </div>
+    </div>
+
+    <!-- Modal: Virtual Gaming Keyboard Drawer -->
+    <div id="omnipad-virtual-keyboard" class="hidden">
+        <div class="vk-header">
+            <div style="display: flex; align-items: center; gap: 8px; color: #38bdf8;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                <span style="font-weight: 700; font-size: 14px; color: #f8fafc;">Virtual Gaming Keyboard</span>
+                <span class="code-badge" style="font-size: 11px;">Zero-Driver</span>
+            </div>
+            <button id="btn-close-keyboard" class="btn-icon" title="Close Keyboard">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <!-- Function / Number Row -->
+        <div class="vk-row">
+            <button class="vk-key vk-func" data-vk="0x1B">ESC</button>
+            <button class="vk-key" data-vk="0x31">1</button>
+            <button class="vk-key" data-vk="0x32">2</button>
+            <button class="vk-key" data-vk="0x33">3</button>
+            <button class="vk-key" data-vk="0x34">4</button>
+            <button class="vk-key" data-vk="0x35">5</button>
+            <button class="vk-key" data-vk="0x36">6</button>
+            <button class="vk-key" data-vk="0x37">7</button>
+            <button class="vk-key" data-vk="0x38">8</button>
+            <button class="vk-key" data-vk="0x39">9</button>
+            <button class="vk-key" data-vk="0x30">0</button>
+            <button class="vk-key" data-vk="0xBD">-</button>
+            <button class="vk-key" data-vk="0xBB">=</button>
+            <button class="vk-key vk-wide" data-vk="0x08">BKSP</button>
+        </div>
+        <!-- Row 2 -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x09">TAB</button>
+            <button class="vk-key" data-vk="0x51">Q</button>
+            <button class="vk-key vk-gaming" data-vk="0x57">W</button>
+            <button class="vk-key" data-vk="0x45">E</button>
+            <button class="vk-key" data-vk="0x52">R</button>
+            <button class="vk-key" data-vk="0x54">T</button>
+            <button class="vk-key" data-vk="0x59">Y</button>
+            <button class="vk-key" data-vk="0x55">U</button>
+            <button class="vk-key" data-vk="0x49">I</button>
+            <button class="vk-key" data-vk="0x4F">O</button>
+            <button class="vk-key" data-vk="0x50">P</button>
+            <button class="vk-key" data-vk="0xDB">[</button>
+            <button class="vk-key" data-vk="0xDD">]</button>
+            <button class="vk-key" data-vk="0xDC">\</button>
+        </div>
+        <!-- Row 3 -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x14">CAPS</button>
+            <button class="vk-key vk-gaming" data-vk="0x41">A</button>
+            <button class="vk-key vk-gaming" data-vk="0x53">S</button>
+            <button class="vk-key vk-gaming" data-vk="0x44">D</button>
+            <button class="vk-key" data-vk="0x46">F</button>
+            <button class="vk-key" data-vk="0x47">G</button>
+            <button class="vk-key" data-vk="0x48">H</button>
+            <button class="vk-key" data-vk="0x4A">J</button>
+            <button class="vk-key" data-vk="0x4B">K</button>
+            <button class="vk-key" data-vk="0x4C">L</button>
+            <button class="vk-key" data-vk="0xBA">;</button>
+            <button class="vk-key" data-vk="0xDE">'</button>
+            <button class="vk-key vk-extra-wide" data-vk="0x0D">ENTER</button>
+        </div>
+        <!-- Row 4 -->
+        <div class="vk-row">
+            <button class="vk-key vk-extra-wide" data-vk="0x10">SHIFT</button>
+            <button class="vk-key" data-vk="0x5A">Z</button>
+            <button class="vk-key" data-vk="0x58">X</button>
+            <button class="vk-key" data-vk="0x43">C</button>
+            <button class="vk-key" data-vk="0x56">V</button>
+            <button class="vk-key" data-vk="0x42">B</button>
+            <button class="vk-key" data-vk="0x4E">N</button>
+            <button class="vk-key" data-vk="0x4D">M</button>
+            <button class="vk-key" data-vk="0xBC">,</button>
+            <button class="vk-key" data-vk="0xBE">.</button>
+            <button class="vk-key" data-vk="0xBF">/</button>
+            <button class="vk-key" data-vk="0x26">&uarr;</button>
+            <button class="vk-key vk-wide" data-vk="0x10">SHIFT</button>
+        </div>
+        <!-- Row 5: Space & Nav -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x11">CTRL</button>
+            <button class="vk-key vk-wide" data-vk="0x12">ALT</button>
+            <button class="vk-key vk-space" data-vk="0x20">SPACE</button>
+            <button class="vk-key" data-vk="0x25">&larr;</button>
+            <button class="vk-key" data-vk="0x28">&darr;</button>
+            <button class="vk-key" data-vk="0x27">&rarr;</button>
+        </div>
+    </div>
+
+    <!-- HUD Toast for Notifications -->
+    <div id="hud-toast" class="hud-toast hidden"></div>
+
+    <!-- Scripts -->
+    <script src="js/network.js"></script>
+    <script src="js/audioEngine.js"></script>
+    <script src="js/micEngine.js"></script>
+    <script src="js/screenStreamEngine.js"></script>
+    <script src="js/mouseKeyboardEngine.js"></script>
+    <script src="js/touchEngine.js"></script>
+    <script src="js/gyroEngine.js"></script>
+    <script src="js/macroEngine.js"></script>
+    <script src="js/customizer.js"></script>
+    <script src="js/layouts.js"></script>
+    <script src="js/customSelect.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

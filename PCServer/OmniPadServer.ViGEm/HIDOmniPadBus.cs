@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using OmniPadServer.Core;
 
 namespace OmniPadServer.ViGEm;
@@ -30,9 +31,14 @@ public sealed class HIDOmniPadBus : IPadBackend
 
     public string ActiveEngineName => _activeBackend switch
     {
+#if WINDOWS
         ViGEmPadBackend => "ViGEm Xbox 360 (Kernel WHQL)",
         ViGEmDualShock4PadBackend => "ViGEm DualShock 4 (Kernel WHQL)",
         HIDMaestroPadBackend hm => $"HIDMaestro UMDF2 ({hm.Profile.Name})",
+#endif
+        LinuxUinputPadBackend lp => $"Linux uinput ({lp.ControllerName})",
+        LinuxUinputMouseKeyboardBackend => "Linux uinput Virtual Keyboard & Mouse",
+        MacInputSimulator => "macOS CoreGraphics Input Simulator",
         _ => "Zero-Driver Keyboard & Mouse"
     };
 
@@ -88,11 +94,37 @@ public sealed class HIDOmniPadBus : IPadBackend
 
     private IPadBackend InstantiateBackend(ControllerProfilePreset preset)
     {
-        if (_forceKbm || preset == ControllerProfilePreset.KeyboardMouse)
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            return new VirtualMouseKeyboardBackend();
+            return new MacInputSimulator();
         }
 
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (_forceKbm || preset == ControllerProfilePreset.KeyboardMouse)
+            {
+                return new LinuxUinputMouseKeyboardBackend();
+            }
+
+            var layout = (preset == ControllerProfilePreset.DualShock4_WHQL ||
+                          preset == ControllerProfilePreset.DualSense_PS5 ||
+                          preset == ControllerProfilePreset.DualSense_Edge)
+                ? LinuxPadLayout.DualShock4
+                : LinuxPadLayout.Xbox360;
+
+            var be = new LinuxUinputPadBackend(layout);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"[HIDOmniPadBus] Active: {be.ControllerName} (Linux /dev/uinput)");
+            Console.ResetColor();
+            return be;
+        }
+
+        if (_forceKbm || preset == ControllerProfilePreset.KeyboardMouse)
+        {
+            return PadBackendFactory.CreateKeyboardMouseBackend();
+        }
+
+#if WINDOWS
         var info = ControllerProfileCatalog.Get(preset);
 
         // 1. If profile is targeted for ViGEm KMDF
@@ -137,8 +169,12 @@ public sealed class HIDOmniPadBus : IPadBackend
 
         // 2. Profile targeted for HIDMaestro (DualSense PS5, Switch Pro, GameCube, Wheels, etc.)
         return TryCreateHIDMaestro(info.UnderlyingProfileId);
+#else
+        return PadBackendFactory.CreateKeyboardMouseBackend();
+#endif
     }
 
+#if WINDOWS
     private IPadBackend TryCreateHIDMaestro(string profileId)
     {
         try
@@ -165,10 +201,11 @@ public sealed class HIDOmniPadBus : IPadBackend
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("[HIDOmniPadBus] Falling back to zero-driver Keyboard/Mouse emulation.");
                 Console.ResetColor();
-                return new VirtualMouseKeyboardBackend();
+                return PadBackendFactory.CreateKeyboardMouseBackend();
             }
         }
     }
+#endif
 
     public void Connect(int slot)
     {

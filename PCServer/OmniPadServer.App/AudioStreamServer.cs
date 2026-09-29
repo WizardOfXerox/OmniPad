@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+#if WINDOWS
 using NAudio.Wave;
+#endif
 
 namespace OmniPadServer.App;
 
@@ -35,12 +38,16 @@ public sealed class AudioStreamServer : IAsyncDisposable
         }
     }
 
+#if WINDOWS
     private WasapiLoopbackCapture? _capture;
+#endif
     private readonly ConcurrentDictionary<Guid, AudioClient> _clients = new();
     private readonly object _lock = new();
     private int _targetSampleRate = 48000;
     private int _targetChannels = 2;
+#if WINDOWS
     private bool _isCapturing;
+#endif
 
     public int ConnectedListeners => _clients.Count;
 
@@ -137,6 +144,15 @@ public sealed class AudioStreamServer : IAsyncDisposable
 
     private void EnsureCaptureRunning()
     {
+#if WINDOWS
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"[Audio Jack] Audio loopback streaming via WASAPI is supported on Windows hosts only ({RuntimeInformation.OSDescription}). Audio capture disabled on this platform.");
+            Console.ResetColor();
+            return;
+        }
+
         if (_isCapturing || _capture != null) return;
 
         try
@@ -166,10 +182,16 @@ public sealed class AudioStreamServer : IAsyncDisposable
             _capture = null;
             _isCapturing = false;
         }
+#else
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.WriteLine($"[Audio Jack] Audio loopback streaming via WASAPI is supported on Windows hosts only ({RuntimeInformation.OSDescription}). Audio capture disabled on this platform.");
+        Console.ResetColor();
+#endif
     }
 
     private void StopCapture()
     {
+#if WINDOWS
         if (!_isCapturing && _capture == null) return;
 
         try
@@ -188,8 +210,12 @@ public sealed class AudioStreamServer : IAsyncDisposable
             _isCapturing = false;
             Console.WriteLine("[Audio Jack] All listeners disconnected. Capture paused (0% CPU).");
         }
+#else
+        // No capture active on non-Windows
+#endif
     }
 
+#if WINDOWS
     private void OnAudioDataAvailable(object? sender, WaveInEventArgs e)
     {
         if (e.BytesRecorded <= 0 || _clients.IsEmpty || _capture == null) return;
@@ -228,6 +254,7 @@ public sealed class AudioStreamServer : IAsyncDisposable
             client.Channel.Writer.TryWrite(pcm16Bytes);
         }
     }
+#endif
 
     public ValueTask DisposeAsync()
     {

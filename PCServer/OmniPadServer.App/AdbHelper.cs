@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using OmniPadServer.Core;
@@ -35,20 +36,8 @@ public static class AdbHelper
         }
         catch { }
 
-        // 2. Check Android SDK standard paths
-        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string[] candidates =
-        [
-            Path.Combine(localAppData, "Android", "Sdk", "platform-tools", "adb.exe"),
-            Path.Combine(Environment.GetEnvironmentVariable("ANDROID_HOME") ?? "", "platform-tools", "adb.exe"),
-            Path.Combine(Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT") ?? "", "platform-tools", "adb.exe"),
-            @"C:\Program Files\Android\platform-tools\adb.exe",
-            @"C:\Android\platform-tools\adb.exe",
-            @"C:\platform-tools\adb.exe",
-            Path.Combine(AppContext.BaseDirectory, "platform-tools", "adb.exe"),
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "platform-tools", "adb.exe")
-        ];
-
+        // 2. Check standard candidate paths across macOS, Linux, and Windows
+        var candidates = GetAdbCandidatePaths();
         foreach (var path in candidates)
         {
             if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
@@ -59,6 +48,57 @@ public static class AdbHelper
         }
 
         return null;
+    }
+
+    public static IReadOnlyList<string> GetAdbCandidatePaths()
+    {
+        var list = new List<string>();
+
+        // macOS standard installation paths
+        list.Add("/opt/homebrew/bin/adb"); // Apple Silicon Homebrew
+        list.Add("/usr/local/bin/adb");   // Intel Mac Homebrew / Standard Unix
+
+        // Linux standard installation paths
+        list.Add("/usr/bin/adb");         // Debian/Ubuntu/Fedora standard package
+
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(home))
+        {
+            list.Add(Path.Combine(home, "Library", "Android", "sdk", "platform-tools", "adb"));
+            list.Add(Path.Combine(home, "Android", "Sdk", "platform-tools", "adb"));
+        }
+
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string? androidHome = Environment.GetEnvironmentVariable("ANDROID_HOME");
+        string? androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
+        string exeSuffix = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : "";
+
+        if (!string.IsNullOrEmpty(androidHome))
+        {
+            list.Add(Path.Combine(androidHome, "platform-tools", $"adb{exeSuffix}"));
+        }
+        if (!string.IsNullOrEmpty(androidSdkRoot))
+        {
+            list.Add(Path.Combine(androidSdkRoot, "platform-tools", $"adb{exeSuffix}"));
+        }
+
+        // Windows standard paths
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (!string.IsNullOrEmpty(localAppData))
+            {
+                list.Add(Path.Combine(localAppData, "Android", "Sdk", "platform-tools", "adb.exe"));
+            }
+            list.Add(@"C:\Program Files\Android\platform-tools\adb.exe");
+            list.Add(@"C:\Android\platform-tools\adb.exe");
+            list.Add(@"C:\platform-tools\adb.exe");
+        }
+
+        // Portable / relative directory paths
+        list.Add(Path.Combine(AppContext.BaseDirectory, "platform-tools", $"adb{exeSuffix}"));
+        list.Add(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "platform-tools", $"adb{exeSuffix}"));
+
+        return list;
     }
 
     public static async Task<List<(string Serial, string Status, string Details)>> GetConnectedDevicesAsync(string adb)

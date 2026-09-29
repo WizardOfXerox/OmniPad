@@ -13,10 +13,10 @@ permissions:
 
 jobs:
   # =========================================================================
-  # 1. PC SERVER & UNIT TESTS (.NET 8)
+  # 1. PC SERVER & UNIT TESTS (WINDOWS .NET 8)
   # =========================================================================
   build-pc-server:
-    name: Build PC Server & Run Tests
+    name: Build PC Server (Windows x64) & Run Tests
     runs-on: windows-latest
 
     steps:
@@ -54,7 +54,55 @@ jobs:
           if-no-files-found: error
 
   # =========================================================================
-  # 2. ANDROID CLIENT (GRADLE / KOTLIN)
+  # 2. PC SERVER & UNIT TESTS (LINUX x64 .NET 8)
+  # =========================================================================
+  build-pc-server-linux:
+    name: Build PC Server (Linux x64) & Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build PCServer Solution (Release - net8.0)
+        run: dotnet build PCServer/OmniPadServer.sln -c Release -f net8.0
+
+      - name: Run Unit Tests
+        run: dotnet test PCServer/OmniPadServer.Tests/OmniPadServer.Tests.csproj -c Release -f net8.0 --no-build --verbosity normal
+
+      - name: Publish Single-File Self-Contained Linux Binaries
+        run: |
+          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Linux-x64
+          cp publish/OmniPad-Linux-x64/OmniPadServer.App publish/OmniPad-Linux-x64/OmniPadServer
+          chmod +x publish/OmniPad-Linux-x64/OmniPadServer
+          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Linux-x64
+          mkdir -p publish/OmniPad-Linux-x64/WebClient publish/OmniPad-Linux-x64/wwwroot
+          cp -r WebClient/* publish/OmniPad-Linux-x64/WebClient/
+          cp -r WebClient/* publish/OmniPad-Linux-x64/wwwroot/
+          if [ -f "version.json" ]; then cp version.json publish/OmniPad-Linux-x64/; fi
+          tar -czvf OmniPad-Linux-x64.tar.gz -C publish OmniPad-Linux-x64
+
+      - name: Upload Linux PC Server Directory Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-Server-linux-x64
+          path: publish/OmniPad-Linux-x64/
+          if-no-files-found: error
+
+      - name: Upload Linux PC Server Tarball Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-Linux-x64-tarball
+          path: OmniPad-Linux-x64.tar.gz
+          if-no-files-found: error
+
+  # =========================================================================
+  # 3. ANDROID CLIENT (GRADLE / KOTLIN)
   # =========================================================================
   build-android-client:
     name: Build Android Client APK
@@ -91,22 +139,28 @@ jobs:
           if-no-files-found: error
 
   # =========================================================================
-  # 3. UNIVERSAL BUNDLE PACKAGING
+  # 4. UNIVERSAL BUNDLE PACKAGING
   # =========================================================================
   package-distribution:
     name: Package Universal Portable Release
-    needs: [build-pc-server, build-android-client]
+    needs: [build-pc-server, build-pc-server-linux, build-android-client]
     runs-on: windows-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download PC Server Artifact
+      - name: Download PC Server Windows Artifact
         uses: actions/download-artifact@v4
         with:
           name: OmniPad-Server-win-x64
           path: dist/OmniPad-Portable
+
+      - name: Download Linux PC Server Tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: OmniPad-Linux-x64-tarball
+          path: .
 
       - name: Download Android APK Artifact
         uses: actions/download-artifact@v4
@@ -144,10 +198,10 @@ jobs:
           name: "OmniPad ${{ github.ref_name }}"
           files: |
             OmniPad-Portable.zip
+            OmniPad-Linux-x64.tar.gz
             OmniPad.apk
           generate_release_notes: true
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

@@ -1,10 +1,13 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+#if WINDOWS
 using System.ServiceProcess;
 using HIDMaestro;
 using Microsoft.Win32;
+#endif
 
 namespace OmniPadServer.ViGEm;
 
@@ -31,6 +34,12 @@ public static class HIDOmniPadBusManager
 
     public static HIDOmniPadBusStatus DetectStatus()
     {
+#if WINDOWS
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return CreateNonWindowsStatus();
+        }
+
         bool vigemInstalled = false;
         bool vigemRunning = false;
         string vigemVersion = "Not Detected";
@@ -44,7 +53,6 @@ public static class HIDOmniPadBusManager
         }
         catch
         {
-            // Service not registered
             vigemInstalled = false;
             vigemRunning = false;
         }
@@ -96,6 +104,38 @@ public static class HIDOmniPadBusManager
             primaryEngine,
             summary
         );
+#else
+        return CreateNonWindowsStatus();
+#endif
+    }
+
+    private static HIDOmniPadBusStatus CreateNonWindowsStatus()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            bool hasUinput = File.Exists("/dev/uinput") || File.Exists("/dev/input/uinput");
+            return new HIDOmniPadBusStatus(
+                ViGEmInstalled: false,
+                ViGEmRunning: false,
+                ViGEmVersion: "N/A (Linux Host)",
+                HIDMaestroInstalled: false,
+                TotalProfilesAvailable: 2,
+                PrimaryEngine: "Linux Native uinput Subsystem",
+                StatusSummary: hasUinput
+                    ? "Ready: Linux kernel /dev/uinput active (Xbox 360 & DualShock 4 emulation)."
+                    : "Notice: /dev/uinput not found or requires input group permissions (e.g. sudo usermod -aG input $USER)."
+            );
+        }
+
+        return new HIDOmniPadBusStatus(
+            ViGEmInstalled: false,
+            ViGEmRunning: false,
+            ViGEmVersion: "N/A (Non-Windows Host)",
+            HIDMaestroInstalled: false,
+            TotalProfilesAvailable: 0,
+            PrimaryEngine: "Zero-Driver Keyboard & Mouse",
+            StatusSummary: $"Non-Windows host ({RuntimeInformation.OSDescription}): Virtual hardware drivers not applicable. DSU motion & KBM active."
+        );
     }
 
     public static bool InstallViGEm(string? explicitInstallerPath = null)
@@ -131,6 +171,7 @@ public static class HIDOmniPadBusManager
 
     public static bool InstallHIDMaestro()
     {
+#if WINDOWS
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("[HIDOmniPadBus] Staging HIDMaestro UMDF2 driver and test certificate...");
         Console.ResetColor();
@@ -148,10 +189,19 @@ public static class HIDOmniPadBusManager
             Console.ResetColor();
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     public static bool InstallAll(string? vigemInstaller = null)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.WriteLine("[HIDOmniPadBus] Linux uses kernel /dev/uinput. Ensure your user belongs to 'input' group: sudo usermod -aG input $USER");
+            return true;
+        }
+
         bool okVigem = InstallViGEm(vigemInstaller);
         bool okHm = InstallHIDMaestro();
         return okVigem || okHm;
@@ -159,6 +209,12 @@ public static class HIDOmniPadBusManager
 
     public static bool UninstallAll()
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.WriteLine($"[HIDOmniPadBusManager] Driver uninstallation is only supported on Windows hosts ({RuntimeInformation.OSDescription}).");
+            return false;
+        }
+
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("[HIDOmniPadBus] Initiating complete driver and device purge...");
         Console.ResetColor();

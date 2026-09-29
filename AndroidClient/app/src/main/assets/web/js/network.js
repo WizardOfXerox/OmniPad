@@ -530,6 +530,18 @@ class NetworkClient {
             return;
         }
 
+        if (window.OmniPadNative && typeof window.OmniPadNative.sendUdpInput === 'function') {
+            window.OmniPadNative.sendUdpInput(
+                state.buttons || 0,
+                state.thumbLX || 0,
+                state.thumbLY || 0,
+                state.thumbRX || 0,
+                state.thumbRY || 0,
+                state.leftTrigger || 0,
+                state.rightTrigger || 0
+            );
+        }
+
         if (!this.isConnected || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
 
         // Sequence (u32 little-endian)

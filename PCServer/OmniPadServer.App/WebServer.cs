@@ -377,10 +377,12 @@ public sealed class WebServer : IAsyncDisposable
             {
                 if (HttpMethods.IsPost(context.Request.Method))
                 {
-                    string updaterExe = Path.Combine(AppContext.BaseDirectory, "OmniPadUpdater.exe");
+                    string updaterBinaryName = OperatingSystem.IsWindows() ? "OmniPadUpdater.exe" : "OmniPadUpdater";
+                    string updaterExe = Path.Combine(AppContext.BaseDirectory, updaterBinaryName);
                     if (!File.Exists(updaterExe))
                     {
-                        updaterExe = Path.Combine(AppContext.BaseDirectory, "..", "OmniPadUpdater.App", "bin", "Debug", "net8.0-windows", "OmniPadUpdater.exe");
+                        string targetFramework = OperatingSystem.IsWindows() ? "net8.0-windows" : "net8.0";
+                        updaterExe = Path.Combine(AppContext.BaseDirectory, "..", "OmniPadUpdater.App", "bin", "Debug", targetFramework, updaterBinaryName);
                     }
 
                     if (File.Exists(updaterExe))
@@ -388,7 +390,7 @@ public sealed class WebServer : IAsyncDisposable
                         int currentPid = Environment.ProcessId;
                         Process.Start(new ProcessStartInfo(updaterExe, $"--apply --pid {currentPid} --silent")
                         {
-                            UseShellExecute = true
+                            UseShellExecute = !OperatingSystem.IsLinux()
                         });
 
                         context.Response.ContentType = "application/json";
@@ -398,7 +400,7 @@ public sealed class WebServer : IAsyncDisposable
                     {
                         context.Response.StatusCode = StatusCodes.Status404NotFound;
                         context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsync("{\"success\":false,\"message\":\"OmniPadUpdater.exe binary not found.\"}");
+                        await context.Response.WriteAsync($"{{\"success\":false,\"message\":\"{updaterBinaryName} binary not found.\"}}");
                     }
                 }
                 else

@@ -19,6 +19,9 @@ OmniPad/
 │   └── OmniPadUpdater.App/     # Delta updater and manifest verification utility
 ├── AndroidClient/              # Native Android application (Kotlin, SDK 35, Min SDK 21)
 │   └── app/src/main/           # Hardware buttons (volume bumpers), Bluetooth HID, QR scanner
+├── iOSClient/                  # Native iOS application (SwiftUI, iOS 15.0+, Network.framework, CoreHaptics)
+│   ├── OmniPad.xcodeproj/      # Xcode project for iOS build & sideloading
+│   └── OmniPad/                # Hardware volume bumpers, 250 Hz UDP streaming, QR scanner, JS bridge
 ├── WebClient/                  # Zero-install HTML5/Canvas progressive web app (PWA)
 │   ├── js/                     # Touch engine, micro-aiming gyro filter, layout editor, macros
 │   └── css/                    # Low-power OLED pure-black themes & responsive styling
@@ -36,29 +39,60 @@ To build the entire project locally, ensure you have the following installed:
 
 | Tool | Version Required | Purpose |
 |---|:---:|---|
-| **Operating System** | Windows 10 / 11 (x64) | Required for ViGEmBus and Windows Input APIs |
+| **Operating System** | Windows 10 / 11 (x64) or Linux (Ubuntu, Debian, Fedora, Arch, SteamOS) | Host OS for running PCServer |
 | **.NET SDK** | `8.0.100` or higher | Compiles `PCServer` and runs unit tests |
 | **Java Development Kit** | **JDK 17 or JDK 21** | Required for Android Gradle builds (JDK 25 is unsupported by Gradle) |
 | **Android SDK** | API 35 (Build-Tools 35.0.0) | Compiles `AndroidClient` APK |
-| **ViGEmBus Driver** *(Optional)* | v1.22.0+ WHQL | Enables kernel-level virtual Xbox/DS4 controllers. *(If absent, server falls back to Keyboard/Mouse simulation)* |
+| **Gamepad Driver (Windows)** | ViGEmBus v1.22.0+ WHQL *(Optional)* | Virtual Xbox/DS4 controllers. *(Fallback: Keyboard/Mouse)* |
+| **Gamepad Driver (Linux)** | `/dev/uinput` (Kernel module) | Native virtual Xbox/DS4 controllers and mouse/keyboard emulation |
 | **Python** *(Optional)* | 3.8+ | For running `tools/fake_phone.py` protocol stress tests |
 
 > [!TIP]
-> If Android Studio is installed, its bundled JDK located at `C:\Program Files\Android\Android Studio\jbr` satisfies the JDK requirement automatically. The build scripts detect this automatically.
+> On Linux, zero third-party drivers are required. OmniPad leverages native `/dev/uinput` to instantiate high-performance virtual Xbox 360 and DualShock 4 gamepads directly into the Linux evdev/input subsystem.
 
 ---
 
 ## 🚀 One-Click Automated Build
 
+### Linux (Bash)
+We provide `./build.sh` for one-click compilation, testing, and packaging on Linux:
+
+```bash
+# Make executable (if needed)
+chmod +x build.sh
+
+# Build PC Server and run unit tests
+./build.sh
+
+# Build and package into OmniPad-Linux-x64.tar.gz
+./build.sh --package
+
+# Skip tests for rapid iteration
+./build.sh --skip-tests
+```
+
+### Windows (PowerShell & Command Prompt)
 We provide unified build scripts (`build.bat` and `build.ps1`) that automate the entire workflow:
 1. Synchronizing WebClient assets to all targets (Web server static root & Android offline assets).
 2. Building `PCServer.sln` under Release configuration.
-3. Executing the 56 unit test suite.
-4. Publishing a single-file, self-contained `OmniPadServer.exe`.
+3. Executing the automated unit test suite.
+4. Publishing a single-file, self-contained `OmniPadServer.exe` (or Linux x64 binary via `-Runtime linux-x64`).
 5. Compiling the Android `OmniPad.apk` debug package.
-6. *(Optional)* Packaging everything into `OmniPad-Portable.zip`.
+6. *(Optional)* Packaging into `OmniPad-Portable.zip` or `OmniPad-Linux-x64.tar.gz`.
 
-### Usage
+**From PowerShell (`pwsh` or `powershell`):**
+```powershell
+# Default Windows build
+.\build.ps1
+.\build.ps1 -SkipAndroid
+.\build.ps1 -Package
+
+# Cross-compile Linux x64 single-file bundle from Windows:
+.\build.ps1 -Runtime linux-x64 -SkipAndroid -Package
+
+# Build both Windows and Linux release packages:
+.\build.ps1 -Runtime all -Package
+```
 
 **From Command Prompt (`cmd.exe`):**
 ```cmd
@@ -70,16 +104,6 @@ build.bat -SkipAndroid
 
 :: Build and immediately package into a release ZIP
 build.bat -Package
-
-:: Skip the unit tests for rapid iteration
-build.bat -SkipTests
-```
-
-**From PowerShell (`pwsh` or `powershell`):**
-```powershell
-.\build.ps1
-.\build.ps1 -SkipAndroid
-.\build.ps1 -Package
 ```
 
 ---
@@ -226,3 +250,13 @@ adb reverse tcp:27500 tcp:27500
 adb reverse tcp:27502 tcp:27502
 ```
 Then navigate to `http://localhost:27502` on your phone browser.
+
+### Q4: Linux `/dev/uinput` Permission Denied
+**Cause**: By default, `/dev/uinput` requires root permissions or membership in the `input` group.  
+**Resolution**: Run the following commands once to allow standard user access:
+```bash
+sudo usermod -aG input $USER
+echo 'KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/99-omnipad-uinput.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+Log out and log back in (or restart) for group membership to take effect. If `/dev/uinput` is still not accessible, OmniPadServer automatically falls back to virtual keyboard/mouse emulation.

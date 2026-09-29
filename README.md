@@ -6,9 +6,9 @@
 [![ViGEmBus](https://img.shields.io/badge/Driver-ViGEmBus%20WHQL-0078D6.svg)](https://github.com/nefarius/ViGEmBus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**OmniPad** turns any smartphone (Android or iOS) into a tournament-grade, ultra-low latency virtual game controller for PC.
+**OmniPad** turns any smartphone (Android or iOS) into a tournament-grade, ultra-low latency virtual game controller for PC (Windows & Linux).
 
-It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmBus) or **Sony DualShock 4**, and includes an automatic **Keyboard & Mouse fallback** for classic/strategy games that do not support controllers.
+It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmBus on Windows, native `/dev/uinput` on Linux) or **Sony DualShock 4**, and includes an automatic **Keyboard & Mouse fallback** for classic/strategy games that do not support controllers.
 
 ---
 
@@ -53,17 +53,24 @@ No installation or framework dependencies required.
 * **Simultaneous Multi-Button Combos**: Tap `+ Add Combo` in the editor to bind multiple buttons to one touch (e.g. $X+Y$, $A+B$).
 * **Floating Dynamic Joysticks**: The joystick base dynamically anchors wherever your thumb first touches the screen.
 * **AMOLED Pure Black Battery Saver**: True `#000000` background with glowing neon button outlines.
-* **In-Game Force Feedback (Rumble)**: PC games send rumble motor feedback $\to$ server $\to$ phone vibrates dynamically.
-* **Physical Bumper Buttons**: In the native Android app, hardware **Volume Up / Down** keys act as physical tactile **LB / RB** bumpers!
+* **In-Game Force Feedback (Rumble)**: PC games send rumble motor feedback $\to$ server $\to$ phone vibrates dynamically (CoreHaptics on iOS, dual vibrator on Android).
+* **Physical Bumper Buttons**: In the native Android & iOS apps, hardware **Volume Up / Down** keys act as physical tactile **LB / RB** bumpers!
 
 ---
 
 ## 🏗️ Building from Source
 
-OmniPad includes automated one-click build pipelines for Windows Command Prompt and PowerShell.
+OmniPad includes automated one-click build pipelines for Linux, Windows Command Prompt, and PowerShell:
 
+**Linux:**
+```bash
+chmod +x build.sh
+./build.sh --package
+```
+
+**Windows:**
 ```cmd
-# One-click full build (PCServer, 56 unit tests, and Android APK)
+# One-click full build (PCServer, unit tests, and Android APK)
 build.bat
 
 # Build only PCServer & WebClient (skips Android SDK requirements)
@@ -73,7 +80,8 @@ build.bat -SkipAndroid
 build.bat -Package
 ```
 
-For complete step-by-step developer setup, toolchain requirements, manual compilation instructions, and troubleshooting guides, read the **[BUILD.md](BUILD.md)** guide.
+For complete step-by-step developer setup, toolchain requirements, Linux `/dev/uinput` permissions, manual compilation instructions, and troubleshooting guides, read the **[BUILD.md](BUILD.md)** guide.
+
 
 ---
 

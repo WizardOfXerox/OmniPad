@@ -11,6 +11,8 @@
 #>
 
 param(
+    [ValidateSet("win-x64", "linux-x64", "all")]
+    [string]$Runtime = "win-x64",
     [switch]$SkipAndroid,
     [switch]$SkipTests,
     [switch]$Package
@@ -21,6 +23,7 @@ $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "         OmniPad Universal Open-Source Build Pipeline            " -ForegroundColor Cyan
+Write-Host "         Target Runtime: $Runtime                                " -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 
 $RootDir = $PSScriptRoot
@@ -28,13 +31,15 @@ $PCServerDir = Join-Path $RootDir "PCServer"
 $AndroidDir = Join-Path $RootDir "AndroidClient"
 $WebClientDir = Join-Path $RootDir "WebClient"
 $PortableDir = Join-Path $RootDir "OmniPad-Portable"
+$LinuxPublishDir = Join-Path (Join-Path $RootDir "publish") "OmniPad-Linux-x64"
 
 # --- 1. SYNC WEB CLIENT ASSETS ---
 Write-Host "`n[1/5] Synchronizing WebClient PWA assets..." -ForegroundColor Yellow
 $destDirs = @(
     (Join-Path $PortableDir "WebClient"),
     (Join-Path $PortableDir "wwwroot"),
-    (Join-Path $AndroidDir "app\src\main\assets\web")
+    (Join-Path $AndroidDir "app\src\main\assets\web"),
+    (Join-Path (Join-Path $RootDir "iOSClient") "OmniPad\Resources\Web")
 )
 
 foreach ($dest in $destDirs) {
@@ -56,7 +61,11 @@ Write-Host "  -> Synced WebClient to Portable & Android assets successfully." -F
 Write-Host "`n[2/5] Building OmniPad PC Server (.NET 8)..." -ForegroundColor Yellow
 $appCsproj = Join-Path $PCServerDir "OmniPadServer.App\OmniPadServer.App.csproj"
 
-& dotnet build $appCsproj -c Release
+if ($Runtime -eq "linux-x64") {
+    & dotnet build $appCsproj -c Release -f net8.0
+} else {
+    & dotnet build $appCsproj -c Release
+}
 if ($LASTEXITCODE -ne 0) {
     throw "PCServer build failed with exit code $LASTEXITCODE"
 }
@@ -66,11 +75,15 @@ Write-Host "  -> PCServer build succeeded." -ForegroundColor Green
 if (-not $SkipTests) {
     Write-Host "`n[3/5] Running automated unit test suite..." -ForegroundColor Yellow
     $testCsproj = Join-Path $PCServerDir "OmniPadServer.Tests\OmniPadServer.Tests.csproj"
-    & dotnet test $testCsproj -c Release --verbosity normal
+    if ($Runtime -eq "linux-x64") {
+        & dotnet test $testCsproj -c Release -f net8.0 --verbosity normal
+    } else {
+        & dotnet test $testCsproj -c Release --verbosity normal
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Unit tests failed with exit code $LASTEXITCODE"
     }
-    Write-Host "  -> All 56/56 unit tests passed!" -ForegroundColor Green
+    Write-Host "  -> All unit tests passed!" -ForegroundColor Green
 } else {
     Write-Host "`n[3/5] Skipping unit tests (-SkipTests specified)." -ForegroundColor DarkGray
 }
@@ -85,33 +98,84 @@ if ($runningProcesses) {
     Start-Sleep -Milliseconds 500
 }
 
-# --- 4. PUBLISH SELF-CONTAINED PORTABLE BINARY ---
-Write-Host "`n[4/5] Publishing self-contained single-file OmniPadServer.exe..." -ForegroundColor Yellow
-& dotnet publish $appCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir
-if ($LASTEXITCODE -ne 0) {
-    throw "Publish failed with exit code $LASTEXITCODE"
-}
+# --- 4. PUBLISH BINARIES ---
+Write-Host "`n[4/5] Publishing self-contained binaries (Runtime: $Runtime)..." -ForegroundColor Yellow
 
-# Ensure standard executable name
-$publishedExe = Join-Path $PortableDir "OmniPadServer.App.exe"
-$targetExe = Join-Path $PortableDir "OmniPadServer.exe"
-if (Test-Path $publishedExe) {
-    Copy-Item -Path $publishedExe -Destination $targetExe -Force
-}
-Write-Host "  -> OmniPadServer.exe published to: $targetExe" -ForegroundColor Green
-
-# Publish OmniPadUpdater.exe
 $updaterCsproj = Join-Path $PCServerDir "OmniPadUpdater.App\OmniPadUpdater.App.csproj"
-& dotnet publish $updaterCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
-Write-Host "  -> OmniPadUpdater.exe published to portable bundle." -ForegroundColor Green
-
-# Publish OmniPadLegacinator.exe
 $legacinatorCsproj = Join-Path $PCServerDir "OmniPadServer.Legacinator\OmniPadServer.Legacinator.csproj"
-& dotnet publish $legacinatorCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
-Write-Host "  -> OmniPadLegacinator.exe published to portable bundle." -ForegroundColor Green
+$versionJson = Join-Path $RootDir "version.json"
+
+# (A) WINDOWS PUBLISH
+if ($Runtime -in @("win-x64", "all")) {
+    Write-Host "  -> Publishing Windows x64 portable bundle..." -ForegroundColor Cyan
+    & dotnet publish $appCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Windows publish failed with exit code $LASTEXITCODE"
+    }
+
+    $publishedExe = Join-Path $PortableDir "OmniPadServer.App.exe"
+    $targetExe = Join-Path $PortableDir "OmniPadServer.exe"
+    if (Test-Path $publishedExe) {
+        Copy-Item -Path $publishedExe -Destination $targetExe -Force
+    }
+
+    & dotnet publish $updaterCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
+    & dotnet publish $legacinatorCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
+    if (Test-Path $versionJson) { Copy-Item -Path $versionJson -Destination $PortableDir -Force }
+    Write-Host "  -> Windows x64 published to: $PortableDir" -ForegroundColor Green
+
+    if ($Package) {
+        Write-Host "  -> Packaging OmniPad-Portable.zip..." -ForegroundColor Yellow
+        $zipPath = Join-Path $RootDir "OmniPad-Portable.zip"
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+        Compress-Archive -Path "$PortableDir\*" -DestinationPath $zipPath -CompressionLevel Optimal
+        Write-Host "  -> Packaged: $zipPath ($([Math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB)" -ForegroundColor Green
+    }
+}
+
+# (B) LINUX PUBLISH
+if ($Runtime -in @("linux-x64", "all")) {
+    Write-Host "  -> Publishing Linux x64 self-contained bundle..." -ForegroundColor Cyan
+    if (-not (Test-Path $LinuxPublishDir)) {
+        New-Item -ItemType Directory -Path $LinuxPublishDir -Force | Out-Null
+    }
+
+    & dotnet publish $appCsproj -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $LinuxPublishDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Linux publish failed with exit code $LASTEXITCODE"
+    }
+
+    $publishedLinuxBin = Join-Path $LinuxPublishDir "OmniPadServer.App"
+    $targetLinuxBin = Join-Path $LinuxPublishDir "OmniPadServer"
+    if (Test-Path $publishedLinuxBin) {
+        Copy-Item -Path $publishedLinuxBin -Destination $targetLinuxBin -Force
+    }
+
+    & dotnet publish $updaterCsproj -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $LinuxPublishDir | Out-Null
+
+    $linuxWeb = Join-Path $LinuxPublishDir "WebClient"
+    $linuxWwwroot = Join-Path $LinuxPublishDir "wwwroot"
+    if (-not (Test-Path $linuxWeb)) { New-Item -ItemType Directory -Path $linuxWeb -Force | Out-Null }
+    if (-not (Test-Path $linuxWwwroot)) { New-Item -ItemType Directory -Path $linuxWwwroot -Force | Out-Null }
+    Copy-Item -Path "$WebClientDir\*" -Destination "$linuxWeb\" -Recurse -Force
+    Copy-Item -Path "$WebClientDir\*" -Destination "$linuxWwwroot\" -Recurse -Force
+    if (Test-Path $versionJson) { Copy-Item -Path $versionJson -Destination $LinuxPublishDir -Force }
+
+    Write-Host "  -> Linux x64 published to: $LinuxPublishDir" -ForegroundColor Green
+
+    if ($Package) {
+        Write-Host "  -> Packaging OmniPad-Linux-x64.tar.gz..." -ForegroundColor Yellow
+        $tarPath = Join-Path $RootDir "OmniPad-Linux-x64.tar.gz"
+        if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
+        $publishParent = Split-Path $LinuxPublishDir
+        $publishFolder = Split-Path $LinuxPublishDir -Leaf
+        & tar -czvf $tarPath -C $publishParent $publishFolder | Out-Null
+        Write-Host "  -> Packaged: $tarPath ($([Math]::Round((Get-Item $tarPath).Length / 1MB, 2)) MB)" -ForegroundColor Green
+    }
+}
 
 # --- 5. BUILD ANDROID APK (GRADLE) ---
-if (-not $SkipAndroid) {
+if (-not $SkipAndroid -and $Runtime -ne "linux-x64") {
     Write-Host "`n[5/5] Building Android Client APK..." -ForegroundColor Yellow
     
     # Ensure JAVA_HOME points to a Gradle 8.10 compatible JDK (17 or 21)
@@ -177,16 +241,7 @@ if (-not $SkipAndroid) {
         Write-Warning "gradlew.bat not found at: $gradlew"
     }
 } else {
-    Write-Host "`n[5/5] Skipping Android APK build (-SkipAndroid specified)." -ForegroundColor DarkGray
-}
-
-# --- OPTIONAL: CREATE ZIP PACKAGE ---
-if ($Package) {
-    Write-Host "`n[+] Packaging OmniPad-Portable.zip..." -ForegroundColor Yellow
-    $zipPath = Join-Path $RootDir "OmniPad-Portable.zip"
-    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path "$PortableDir\*" -DestinationPath $zipPath -CompressionLevel Optimal
-    Write-Host "  -> Packaged: $zipPath ($([Math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB)" -ForegroundColor Green
+    Write-Host "`n[5/5] Skipping Android APK build." -ForegroundColor DarkGray
 }
 
 $sw.Stop()

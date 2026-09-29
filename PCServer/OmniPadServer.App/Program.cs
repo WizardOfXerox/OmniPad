@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using OmniPadServer.App;
@@ -95,9 +96,20 @@ else
     }
 }
 
-var backend = new SwitchablePadBackend(forceKeyboardMouse: forceKbm, initialPreset: selectedPreset);
-ServerTelemetry.ActiveDriverName = backend.CurrentEngineName;
-backend.ProfileChanged += (_, engine) => ServerTelemetry.ActiveDriverName = engine;
+IPadBackend backend;
+if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    var (macBackend, _) = PadBackendFactory.CreateBackend(forceKeyboardMouse: forceKbm, initialPreset: selectedPreset);
+    backend = macBackend;
+    ServerTelemetry.ActiveDriverName = "macOS CoreGraphics Input Simulator";
+}
+else
+{
+    var switchable = new SwitchablePadBackend(forceKeyboardMouse: forceKbm, initialPreset: selectedPreset);
+    ServerTelemetry.ActiveDriverName = switchable.CurrentEngineName;
+    switchable.ProfileChanged += (_, engine) => ServerTelemetry.ActiveDriverName = engine;
+    backend = switchable;
+}
 
 // 2. Initialize Session Manager
 var sessionManager = new SessionManager();
@@ -274,7 +286,12 @@ try
         sw.Restart();
 
         int players = sessionManager.ConnectedCount;
-        string mode = backend.CurrentEngineName;
+        string mode = backend switch
+        {
+            SwitchablePadBackend spb => spb.CurrentEngineName,
+            MacInputSimulator => "macOS CoreGraphics Input Simulator",
+            _ => "Zero-Driver Keyboard & Mouse"
+        };
 
         if (!ServerTelemetry.DebugMode)
         {

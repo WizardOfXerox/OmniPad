@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
@@ -279,3 +280,4 @@ public sealed class ViGEmDualShock4PadBackend : IPadBackend
             throw new ArgumentOutOfRangeException(nameof(slot), $"Slot must be between 0 and {IPadBackend.MaxPads - 1}");
     }
 }
+#endif

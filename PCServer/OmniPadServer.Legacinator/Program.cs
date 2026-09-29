@@ -1,3 +1,16 @@
+#if !WINDOWS
+using System;
+
+namespace OmniPadServer.Legacinator;
+
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        Console.WriteLine("OmniPad Legacinator is a Windows-only driver cleanup utility.");
+    }
+}
+#else
 using System;
 using System.IO;
 using System.Linq;
@@ -296,3 +309,4 @@ public class Program
         Console.ReadKey();
     }
 }
+#endif

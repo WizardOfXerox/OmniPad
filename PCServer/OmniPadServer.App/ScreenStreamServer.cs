@@ -52,8 +52,8 @@ public sealed class ScreenStreamServer : IAsyncDisposable
 
     private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new();
     private readonly ConcurrentDictionary<Guid, bool> _clientBusy = new();
-    private readonly ImageCodecInfo _jpegEncoder;
-    private readonly EncoderParameters _encoderParams;
+    private readonly ImageCodecInfo? _jpegEncoder;
+    private readonly EncoderParameters? _encoderParams;
     private CancellationTokenSource? _cts;
     private NativeThreadProc? _nativeThreadProc;
     private IntPtr _hNativeThread = IntPtr.Zero;
@@ -61,13 +61,35 @@ public sealed class ScreenStreamServer : IAsyncDisposable
     private bool _hasLoggedFirstCapture;
     private bool _hasLoggedCaptureError;
 
+    // Minimal valid 1x1 black JPEG fallback frame for non-Windows platforms
+    private static readonly byte[] FallbackStubFrame =
+    [
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+        0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
+        0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
+        0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20, 0x24, 0x2E, 0x27, 0x20,
+        0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27,
+        0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01,
+        0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x1F, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01,
+        0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
+        0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F,
+        0x00, 0xBF, 0x00, 0xFF, 0xD9
+    ];
+
     public int ConnectedClients => _clients.Count;
 
     public ScreenStreamServer()
     {
-        _jpegEncoder = GetEncoder(ImageFormat.Jpeg);
-        _encoderParams = new EncoderParameters(1);
-        _encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 65L); // 65% quality: high visual clarity with low bandwidth
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                _jpegEncoder = GetEncoder(ImageFormat.Jpeg);
+                _encoderParams = new EncoderParameters(1);
+                _encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 65L); // 65% quality: high visual clarity with low bandwidth
+            }
+            catch { }
+        }
     }
 
     private static ImageCodecInfo GetEncoder(ImageFormat format)
@@ -85,6 +107,34 @@ public sealed class ScreenStreamServer : IAsyncDisposable
 
     public async Task HandleWebSocketAsync(WebSocket socket)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"[ScreenStreamServer] Desktop screen capture via DXGI/GDI is supported on Windows hosts only ({RuntimeInformation.OSDescription}). Returning platform fallback frame.");
+            Console.ResetColor();
+
+            try
+            {
+                if (socket.State == WebSocketState.Open)
+                {
+                    await socket.SendAsync(new ArraySegment<byte>(FallbackStubFrame), WebSocketMessageType.Binary, true, CancellationToken.None).ConfigureAwait(false);
+                }
+
+                byte[] dummyBuffer = new byte[64];
+                while (socket.State == WebSocketState.Open)
+                {
+                    var res = await socket.ReceiveAsync(new ArraySegment<byte>(dummyBuffer), CancellationToken.None).ConfigureAwait(false);
+                    if (res.MessageType == WebSocketMessageType.Close)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Screen streaming is supported on Windows hosts only", CancellationToken.None).ConfigureAwait(false);
+                        break;
+                    }
+                }
+            }
+            catch { }
+            return;
+        }
+
         var id = Guid.NewGuid();
         _clients[id] = socket;
         _clientBusy[id] = false;
@@ -201,7 +251,14 @@ public sealed class ScreenStreamServer : IAsyncDisposable
                 }
 
                 memoryStream.SetLength(0);
-                scaledBmp.Save(memoryStream, _jpegEncoder, _encoderParams);
+                if (_jpegEncoder != null && _encoderParams != null)
+                {
+                    scaledBmp.Save(memoryStream, _jpegEncoder, _encoderParams);
+                }
+                else
+                {
+                    scaledBmp.Save(memoryStream, ImageFormat.Jpeg);
+                }
                 byte[] frameBytes = memoryStream.ToArray();
 
                 if (!_hasLoggedFirstCapture)
@@ -248,7 +305,14 @@ public sealed class ScreenStreamServer : IAsyncDisposable
                     }
 
                     memoryStream.SetLength(0);
-                    fallbackBmp.Save(memoryStream, _jpegEncoder, _encoderParams);
+                    if (_jpegEncoder != null && _encoderParams != null)
+                    {
+                        fallbackBmp.Save(memoryStream, _jpegEncoder, _encoderParams);
+                    }
+                    else
+                    {
+                        fallbackBmp.Save(memoryStream, ImageFormat.Jpeg);
+                    }
                     byte[] fallbackBytes = memoryStream.ToArray();
                     BroadcastFrame(fallbackBytes, ct);
                 }
@@ -307,13 +371,13 @@ public sealed class ScreenStreamServer : IAsyncDisposable
         {
             _cts?.Cancel();
             _cts = null;
-            if (_hNativeThread != IntPtr.Zero)
+            if (_hNativeThread != IntPtr.Zero && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 CloseHandle(_hNativeThread);
                 _hNativeThread = IntPtr.Zero;
             }
             _nativeThreadProc = null;
-            _encoderParams.Dispose();
+            _encoderParams?.Dispose();
         }
         return ValueTask.CompletedTask;
     }

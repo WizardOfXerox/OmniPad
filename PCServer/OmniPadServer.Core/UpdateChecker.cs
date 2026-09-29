@@ -19,7 +19,7 @@ public sealed record UpdateInfo(
 
 public static class UpdateChecker
 {
-    public const string DefaultCurrentVersion = "1.2.0";
+    public const string DefaultCurrentVersion = "1.3.0";
     public const string GitHubRepoOwner = "WizardOfXerox";
     public const string GitHubRepoName = "OmniPad";
     public const string GitHubReleasesApiUrl = $"https://api.github.com/repos/{GitHubRepoOwner}/{GitHubRepoName}/releases/latest";
