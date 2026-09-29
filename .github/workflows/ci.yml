@@ -36,10 +36,10 @@ jobs:
 
       - name: Publish Single-File Self-Contained Binaries
         run: |
-          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
           Copy-Item -Path "publish/OmniPad-Portable/OmniPadServer.App.exe" -Destination "publish/OmniPad-Portable/OmniPadServer.exe" -Force
-          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
-          dotnet publish PCServer/OmniPadServer.Legacinator/OmniPadServer.Legacinator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          dotnet publish PCServer/OmniPadServer.Legacinator/OmniPadServer.Legacinator.csproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/WebClient" -Force | Out-Null
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/wwwroot" -Force | Out-Null
           Copy-Item -Path "WebClient/*" -Destination "publish/OmniPad-Portable/WebClient/" -Recurse -Force
@@ -178,6 +178,12 @@ jobs:
         run: |
           if (Test-Path "dist/OmniPad-Portable/apks/app-debug.apk") {
             Move-Item -Path "dist/OmniPad-Portable/apks/app-debug.apk" -Destination "dist/OmniPad-Portable/apks/OmniPad.apk" -Force
+          }
+
+      - name: Locate Linux Tarball for Release
+        run: |
+          if (Test-Path "OmniPad-Linux-x64-tarball/OmniPad-Linux-x64.tar.gz") {
+            Move-Item -Path "OmniPad-Linux-x64-tarball/OmniPad-Linux-x64.tar.gz" -Destination "OmniPad-Linux-x64.tar.gz" -Force
           }
 
       - name: Compress Release Bundle (ZIP)

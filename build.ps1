@@ -108,7 +108,7 @@ $versionJson = Join-Path $RootDir "version.json"
 # (A) WINDOWS PUBLISH
 if ($Runtime -in @("win-x64", "all")) {
     Write-Host "  -> Publishing Windows x64 portable bundle..." -ForegroundColor Cyan
-    & dotnet publish $appCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir
+    & dotnet publish $appCsproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o $PortableDir
     if ($LASTEXITCODE -ne 0) {
         throw "Windows publish failed with exit code $LASTEXITCODE"
     }
@@ -119,8 +119,8 @@ if ($Runtime -in @("win-x64", "all")) {
         Copy-Item -Path $publishedExe -Destination $targetExe -Force
     }
 
-    & dotnet publish $updaterCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
-    & dotnet publish $legacinatorCsproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
+    & dotnet publish $updaterCsproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
+    & dotnet publish $legacinatorCsproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
     if (Test-Path $versionJson) { Copy-Item -Path $versionJson -Destination $PortableDir -Force }
     Write-Host "  -> Windows x64 published to: $PortableDir" -ForegroundColor Green
 
