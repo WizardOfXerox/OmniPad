@@ -75,7 +75,19 @@ public class HIDOmniPadBusTests
     {
         using var backend = new SwitchablePadBackend(forceKeyboardMouse: false, ControllerProfilePreset.KeyboardMouse);
         Assert.Equal(ControllerProfilePreset.KeyboardMouse, backend.CurrentPreset);
-        Assert.Equal("Zero-Driver Keyboard & Mouse", backend.CurrentEngineName);
+
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
+        {
+            Assert.Equal("Linux uinput Virtual Keyboard & Mouse", backend.CurrentEngineName);
+        }
+        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+        {
+            Assert.Equal("macOS CoreGraphics Input Simulator", backend.CurrentEngineName);
+        }
+        else
+        {
+            Assert.Equal("Zero-Driver Keyboard & Mouse", backend.CurrentEngineName);
+        }
 
         // Connect slot and verify no crash
         backend.Connect(1);

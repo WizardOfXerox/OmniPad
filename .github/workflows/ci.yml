@@ -69,6 +69,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Setup Linux uinput permissions (if available)
+        run: |
+          sudo modprobe uinput || true
+          if [ -e /dev/uinput ]; then sudo chmod 666 /dev/uinput; fi
+          if [ -e /dev/input/uinput ]; then sudo chmod 666 /dev/input/uinput; fi
+
       - name: Build PCServer Solution (Release - net8.0)
         run: dotnet build PCServer/OmniPadServer.sln -c Release -f net8.0
 
