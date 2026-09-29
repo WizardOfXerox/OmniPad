@@ -177,15 +177,15 @@ public static class Program
                             Console.WriteLine();
                             if (ans.KeyChar == 'y' || ans.KeyChar == 'Y')
                             {
-                                string targetZip = Path.Combine(appDir, "OmniPad-Update.zip");
+                                string downloadedZip = Path.Combine(appDir, "OmniPad-Update.zip");
                                 Console.Write("Downloading update package... ");
-                                bool dlOk = await UpdateChecker.DownloadUpdateAsync(info.DownloadUrl, targetZip, pct =>
+                                bool dlOk = await UpdateChecker.DownloadUpdateAsync(info.DownloadUrl, downloadedZip, pct =>
                                 {
                                     Console.Write($"\rDownloading update package... {pct}%");
                                 });
                                 Console.WriteLine();
 
-                                if (dlOk && File.Exists(targetZip))
+                                if (dlOk && File.Exists(downloadedZip))
                                 {
                                     Console.ForegroundColor = ConsoleColor.Green;
                                     Console.WriteLine("Download complete. Applying update...");
@@ -193,7 +193,7 @@ public static class Program
 
                                     UpdateApplier.CloseServerProcess();
                                     UpdateApplier.CreateBackup(appDir, backupDir);
-                                    bool applied = UpdateApplier.ApplyUpdateFromZip(targetZip, appDir, backupDir);
+                                    bool applied = UpdateApplier.ApplyUpdateFromZip(downloadedZip, appDir, backupDir);
                                     if (applied)
                                     {
                                         UpdateApplier.RelaunchServer(appDir);
