@@ -42,7 +42,11 @@ class AudioEngine {
             this.gainNode.connect(this.audioCtx.destination);
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const audioUrl = `${protocol}//${window.location.host}/audio`;
+            const host = (this.network && this.network.currentHost) || 
+                         (window.omnipadApp && window.omnipadApp.network && window.omnipadApp.network.currentHost) || 
+                         window.location.host || 
+                         '127.0.0.1:27502';
+            const audioUrl = `${protocol}//${host}/audio`;
 
             this.socket = new WebSocket(audioUrl);
             this.socket.binaryType = 'arraybuffer';

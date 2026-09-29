@@ -19,6 +19,10 @@ class LayoutCustomizer {
         const toolbar = document.getElementById('edit-toolbar');
         if (toolbar) toolbar.classList.toggle('hidden', !this.isEditing);
 
+        if (this.app && this.app.touch) {
+            this.app.touch.setEditMode(this.isEditing);
+        }
+
         if (!this.isEditing) {
             this.deselect();
         }
@@ -159,6 +163,7 @@ class LayoutCustomizer {
                 newControl = {
                     id: 'btn_' + timestamp,
                     type: 'button',
+                    shape: 'round',
                     binding: 0x1000, // A
                     label: 'EXTRA',
                     x: 0.5,
@@ -170,7 +175,8 @@ class LayoutCustomizer {
             case 'btn_paddle':
                 newControl = {
                     id: 'paddle_' + timestamp,
-                    type: 'paddle',
+                    type: 'button',
+                    shape: 'paddle',
                     binding: 'paddle_p1',
                     label: 'P1',
                     x: 0.5,
@@ -182,7 +188,8 @@ class LayoutCustomizer {
             case 'btn_toggle':
                 newControl = {
                     id: 'toggle_' + timestamp,
-                    type: 'toggle',
+                    type: 'button',
+                    shape: 'pill',
                     behavior: 'latch',
                     binding: 0x0040, // LS Click
                     label: 'SPRINT',
@@ -195,7 +202,8 @@ class LayoutCustomizer {
             case 'btn_turbo':
                 newControl = {
                     id: 'turbo_' + timestamp,
-                    type: 'turbo',
+                    type: 'button',
+                    shape: 'round',
                     behavior: 'turbo',
                     binding: 0x1000, // A
                     label: 'TURBO',
@@ -208,7 +216,8 @@ class LayoutCustomizer {
             case 'btn_hold_dual':
                 newControl = {
                     id: 'hold_' + timestamp,
-                    type: 'hold_dual',
+                    type: 'button',
+                    shape: 'round',
                     behavior: 'hold_dual',
                     binding: 0x4000, // X
                     secondaryBinding: 0x8000, // Y
@@ -222,7 +231,8 @@ class LayoutCustomizer {
             case 'btn_shoulder':
                 newControl = {
                     id: 'bumper_' + timestamp,
-                    type: 'shoulder',
+                    type: 'button',
+                    shape: 'shoulder',
                     binding: 0x0100, // LB
                     label: 'LB',
                     x: 0.5,
@@ -359,7 +369,7 @@ class LayoutCustomizer {
                     type: 'button',
                     behavior: 'latch',
                     binding: 'fn_mute',
-                    label: '🔇 MUTE',
+                    label: 'MUTE',
                     x: 0.5,
                     y: 0.5,
                     w: 60,
@@ -371,7 +381,7 @@ class LayoutCustomizer {
                     id: 'recenter_' + timestamp,
                     type: 'button',
                     binding: 'fn_recenter',
-                    label: '🎯 RECENTER',
+                    label: 'RECENTER',
                     x: 0.5,
                     y: 0.5,
                     w: 76,
@@ -551,7 +561,6 @@ class LayoutCustomizer {
 
     makeDraggable(el, itemData) {
         let isDragging = false;
-        let startX, startY;
 
         el.addEventListener('pointerdown', (e) => {
             if (!this.isEditing) return;
@@ -560,8 +569,6 @@ class LayoutCustomizer {
             try { el.setPointerCapture(e.pointerId); } catch (_) {}
 
             this.select(el, itemData);
-            startX = e.clientX;
-            startY = e.clientY;
         });
 
         el.addEventListener('pointermove', (e) => {

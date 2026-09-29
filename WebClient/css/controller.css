@@ -37,6 +37,7 @@ html, body {
     --btn-active: #00ff88;
     --stick-base: radial-gradient(circle, #181818 0%, #0c0c0c 100%);
     --stick-knob: radial-gradient(circle at 35% 35%, #333333 0%, #1a1a1a 100%);
+    --control-opacity: 0.85;
 }
 
 body.theme-stealth {
@@ -121,10 +122,23 @@ body {
     background-color: var(--bg-color);
 }
 
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
 /* --- FLOATING MINIMAL HUD --- */
 #floating-hud {
     position: fixed;
     top: 10px;
+    top: max(10px, env(safe-area-inset-top, 10px));
     left: 50%;
     transform: translateX(-50%);
     display: inline-flex;
@@ -132,29 +146,44 @@ body {
     gap: 8px;
     z-index: 1000;
     pointer-events: auto;
-    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
 body.toolbar-open #floating-hud {
-    top: 58px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-100%);
 }
 
 .status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(14, 14, 14, 0.86);
+    gap: 6px;
+    background: rgba(14, 14, 14, 0.88);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.16);
-    padding: 6px 14px;
-    border-radius: 24px;
-    font-size: 13px;
+    padding: 0 12px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    font-size: 12px;
     font-weight: 500;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
     cursor: pointer;
     touch-action: manipulation;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    line-height: 1;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+#status-text {
+    white-space: nowrap !important;
+    line-height: 1;
 }
 
 .status-pill:hover {
@@ -175,15 +204,22 @@ body.toolbar-open #floating-hud {
     -webkit-backdrop-filter: blur(14px);
     border: 1.5px solid var(--accent);
     color: var(--accent);
-    padding: 6px 14px;
-    border-radius: 24px;
-    font-size: 13px;
+    padding: 0 12px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.5px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65), 0 0 12px rgba(0, 255, 136, 0.2);
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    line-height: 1;
     transition: all 0.15s ease;
 }
 
@@ -203,49 +239,141 @@ body.toolbar-open #floating-hud {
     font-weight: 900;
 }
 
-.audio-jack-btn {
+/* --- HUD TOOLS DOCK (Clean, minimal icon dock) --- */
+.hud-tools-dock {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: rgba(14, 14, 14, 0.9);
+    gap: 3px;
+    background: rgba(14, 14, 14, 0.88);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #bbb;
-    padding: 6px 12px;
-    border-radius: 24px;
-    font-size: 12px;
-    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 0 4px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+    flex-shrink: 0;
+}
+
+.hud-dock-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 13px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #94a3b8 !important;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     transition: all 0.15s ease;
+    flex-shrink: 0 !important;
 }
 
-.audio-jack-btn:hover {
-    background: rgba(30, 30, 30, 0.95);
-    border-color: rgba(255, 255, 255, 0.4);
-    color: #fff;
+.hud-dock-btn svg {
+    display: block !important;
+    width: 14px !important;
+    height: 14px !important;
+    stroke: currentColor !important;
+    fill: none !important;
+    pointer-events: none;
+    flex-shrink: 0 !important;
 }
 
-.audio-jack-btn:active {
-    transform: scale(0.94);
+.hud-dock-btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
 }
 
-.audio-jack-btn.active {
-    background: rgba(0, 255, 136, 0.16);
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: 0 0 14px rgba(0, 255, 136, 0.35);
+.hud-dock-btn:active {
+    transform: scale(0.92);
 }
 
-.audio-jack-btn.active .audio-jack-icon {
+.hud-dock-btn.active {
+    background: rgba(0, 230, 118, 0.22) !important;
+    border-color: #00e676 !important;
+    color: #00e676 !important;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.4) !important;
+}
+
+#btn-audio-jack.active {
+    background: rgba(0, 230, 118, 0.2) !important;
+    border-color: #00e676 !important;
+    color: #00e676 !important;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.45) !important;
+}
+
+#btn-audio-jack.active .audio-jack-icon {
     animation: audioPulse 1.2s infinite ease-in-out;
+}
+
+#btn-hud-mic.active, .hud-mic-btn.active {
+    background: rgba(239, 68, 68, 0.22) !important;
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.45) !important;
+}
+
+#btn-hud-mic.active .mic-icon {
+    animation: audioPulse 1.2s infinite ease-in-out;
+}
+
+#btn-hud-stream.active, .hud-stream-btn.active {
+    background: rgba(168, 85, 247, 0.22) !important;
+    border-color: #a855f7 !important;
+    color: #c084fc !important;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.45) !important;
+}
+
+#btn-hud-trackpad.active, .hud-trackpad-btn.active {
+    background: rgba(45, 212, 191, 0.2) !important;
+    border-color: #2dd4bf !important;
+    color: #2dd4bf !important;
+    box-shadow: 0 0 10px rgba(45, 212, 191, 0.4) !important;
+}
+
+#btn-hud-keyboard.active, .hud-kb-btn.active {
+    background: rgba(251, 191, 36, 0.2) !important;
+    border-color: #fbbf24 !important;
+    color: #fbbf24 !important;
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4) !important;
 }
 
 @keyframes audioPulse {
     0%, 100% { transform: scale(1); filter: brightness(1); }
     50% { transform: scale(1.18); filter: brightness(1.3); }
+}
+
+/* Background Game Video Streaming Canvas */
+.game-stream-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+    object-fit: contain;
+    background: #000;
+}
+
+.game-stream-canvas.hidden {
+    display: none !important;
+}
+
+/* Controller Opacity Control (Transparency over Game Stream) */
+.control-item, .game-btn, .joystick-base, .trigger-surface, .touchpad-surface, .dpad-container, .dpad-touchpad, .abxy-touchpad {
+    opacity: var(--control-opacity, 0.85);
 }
 
 .status-dot {
@@ -261,17 +389,27 @@ body.toolbar-open #floating-hud {
 }
 
 .ping-badge {
-    color: #999;
-    font-family: monospace;
-    font-weight: 600;
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.09);
+    color: #cbd5e1;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 700;
+    font-size: 11px;
+    white-space: nowrap !important;
+    line-height: 1;
+    margin-left: 5px;
+    flex-shrink: 0;
 }
 
 .hud-toggle-icon {
     display: flex;
     align-items: center;
     color: rgba(255, 255, 255, 0.45);
-    margin-left: 2px;
+    margin-left: 3px;
+    flex-shrink: 0;
     transition: transform 0.25s ease;
 }
 
@@ -285,18 +423,22 @@ body.toolbar-open .hud-toggle-icon {
     top: 0;
     left: 0;
     width: 100%;
+    min-height: 52px;
     height: 52px;
-    background: rgba(12, 12, 12, 0.94);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--panel-bg, rgba(12, 12, 16, 0.96));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    gap: 10px;
+    padding: 0 14px;
+    padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 14px)) 0 max(14px, env(safe-area-inset-left, 14px));
     z-index: 999;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    box-sizing: border-box;
 }
 
 #top-bar.collapsed {
@@ -305,64 +447,129 @@ body.toolbar-open .hud-toggle-icon {
     pointer-events: none;
 }
 
+.hud-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.hud-left::-webkit-scrollbar {
+    display: none;
+}
+
+.hud-nav-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9px;
+    padding: 3px 4px;
+    flex-shrink: 0;
+}
+
 .preset-label {
-    font-size: 12px;
-    color: #888;
-    margin-right: 6px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    display: none; /* Hide redundant label text to maximize breathing room */
 }
 
 .hud-left select {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    outline: none;
+    display: none;
 }
 
 .hud-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
+    flex-shrink: 0;
 }
 
+/* UNIFIED BUTTON ARCHITECTURE: Exact 36px height & consistent styling across all buttons */
 .hud-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #eee;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.07);
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 0 9px;
+    font-size: 11.5px;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 5px;
     cursor: pointer;
-    transition: background 0.12s ease, transform 0.08s ease;
+    white-space: nowrap;
+    line-height: 1;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.hud-group-tools .hud-btn {
+    padding: 0 7px;
+    font-size: 11px;
+    gap: 4px;
 }
 
 .hud-btn svg {
     display: block;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
 }
 
 .hud-btn:hover {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 .hud-btn:active {
-    background: var(--accent);
-    color: #000;
-    transform: scale(0.95);
+    background: var(--accent, #00ff88);
+    color: #050505;
+    transform: scale(0.96);
+}
+
+/* Standardized sizing for right action buttons */
+#btn-edit-mode,
+#btn-settings {
+    padding: 0 10px;
+    font-size: 11.5px;
+}
+
+/* Symmetrical square buttons for icon-only actions */
+#btn-fullscreen,
+#btn-hide-topbar {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    padding: 0;
+    justify-content: center;
 }
 
 .hud-btn-close {
-    padding: 6px 9px;
-    color: #aaa;
+    color: #94a3b8;
+}
+
+.hud-btn-close:hover {
+    color: #ff5555;
+    border-color: rgba(255, 85, 85, 0.4);
+    background: rgba(255, 85, 85, 0.12);
+}
+
+/* Active Edit Mode button indicator */
+body.editing #btn-edit-mode {
+    background: #00ff88 !important;
+    color: #050505 !important;
+    border-color: #00ff88 !important;
+    font-weight: 700;
+    box-shadow: 0 0 14px rgba(0, 255, 136, 0.45);
 }
 
 /* --- GAMEPAD WORKSPACE CONTAINER (100% full screen) --- */
@@ -375,6 +582,8 @@ body.toolbar-open .hud-toggle-icon {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    z-index: 10;
 }
 
 /* --- CONTROL ELEMENTS --- */
@@ -417,6 +626,12 @@ body.toolbar-open .hud-toggle-icon {
 .game-btn.active, .game-btn:active {
     opacity: 0.92;
     box-shadow: 0 0 20px var(--accent);
+}
+
+.game-btn.held-secondary {
+    box-shadow: 0 0 24px #38bdf8, inset 0 0 12px rgba(56, 189, 248, 0.4) !important;
+    border-color: #38bdf8 !important;
+    color: #38bdf8 !important;
 }
 
 /* Pill Button for Select, Start, Options, Share, Handbrake, Macros */
@@ -1148,15 +1363,73 @@ body.toolbar-open .hud-toggle-icon {
     box-shadow: 0 0 14px var(--accent);
 }
 
-/* Edit Mode Styling */
+/* --- EDIT MODE BLUEPRINT ALIGNMENT GRID --- */
+body.editing #gamepad-container {
+    background-color: #060608;
+    background-image: 
+        /* Major grid lines (80px) in sleek cyber green */
+        linear-gradient(to right, rgba(0, 255, 136, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 255, 136, 0.12) 1px, transparent 1px),
+        /* Minor subdivision grid lines (20px) in faint white */
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px;
+    background-position: center center;
+    position: relative;
+}
+
+/* Center crosshair axes for precision symmetry */
+body.editing #gamepad-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.35) 15%, rgba(0, 255, 136, 0.55) 50%, rgba(0, 255, 136, 0.35) 85%, transparent);
+    pointer-events: none;
+    z-index: 1;
+}
+
+body.editing #gamepad-container::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(0, 255, 136, 0.35) 15%, rgba(0, 255, 136, 0.55) 50%, rgba(0, 255, 136, 0.35) 85%, transparent);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Edit Mode Controls & Selection */
 body.editing .control-elem {
-    outline: 2px dashed #00ff88;
+    outline: 2px dashed rgba(0, 255, 136, 0.55);
     outline-offset: 4px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: move;
+    transition: none !important;
+}
+
+body.editing .control-elem * {
+    pointer-events: none !important;
+}
+
+/* CRITICAL FIX: Ensure translate(-50%, -50%) is preserved in ALL edit states so elements NEVER shift downwards or to the right */
+body.editing .control-elem,
+body.editing .control-elem:active,
+body.editing .control-elem.active,
+body.editing .control-elem.selected {
+    transform: translate(-50%, -50%) scale(calc(var(--elem-scale, 1) * var(--dyn-scale, 1))) !important;
 }
 
 body.editing .control-elem.selected {
-    outline: 2px solid #ff0077;
-    box-shadow: 0 0 15px rgba(255, 0, 119, 0.5);
+    outline: 2px solid #ff0077 !important;
+    outline-offset: 4px;
+    box-shadow: 0 0 20px rgba(255, 0, 119, 0.65) !important;
 }
 
 #edit-toolbar {
@@ -1442,8 +1715,8 @@ body.modal-open #top-bar {
 .modal-content {
     position: relative;
     z-index: 2;
-    background: #151515;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: var(--panel-bg, #151515);
+    border: 1px solid var(--btn-border, rgba(255, 255, 255, 0.18));
     border-radius: 16px;
     width: 92%;
     max-width: 540px;
@@ -1451,7 +1724,7 @@ body.modal-open #top-bar {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 25px var(--accent-glow, transparent);
     touch-action: auto;
     pointer-events: auto;
 }
@@ -2001,6 +2274,85 @@ body.modal-open #top-bar {
     color: #fff;
 }
 
+/* Layout Sharing & Beam Styles */
+.hud-share-btn {
+    border-color: rgba(168, 85, 247, 0.35) !important;
+    color: #c084fc !important;
+}
+.hud-share-btn:hover,
+.hud-share-btn:active {
+    border-color: #a855f7 !important;
+    background: rgba(168, 85, 247, 0.18) !important;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3) !important;
+}
+
+.layout-prompt-card {
+    border-color: rgba(168, 85, 247, 0.45) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(168, 85, 247, 0.22) !important;
+}
+
+.layout-icon-badge {
+    background: rgba(168, 85, 247, 0.15) !important;
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.35) !important;
+}
+
+.layout-prompt-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0 6px 0;
+    padding: 7px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.layout-prompt-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layout-prompt-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(168, 85, 247, 0.25);
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    color: #c084fc;
+    font-weight: 600;
+}
+
+.btn-share-target-action {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #c084fc;
+}
+.btn-share-target-action:hover,
+.btn-share-target-action:active {
+    background: #a855f7;
+    color: #000;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
+}
+
+.btn-share-target-broadcast {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+}
+.btn-share-target-broadcast:hover,
+.btn-share-target-broadcast:active {
+    background: #38bdf8;
+    color: #000;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+}
+
 /* Global HUD Toast Notification */
 .hud-toast {
     position: fixed;
@@ -2499,5 +2851,771 @@ body.modal-open #top-bar {
     }
 }
 
+/* ==========================================================================
+   OmniPad Universal Custom Gaming Select & Picker Styles
+   ========================================================================== */
 
+.omnipad-hidden-native-select {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+}
 
+.omnipad-select-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 100%;
+    text-align: left;
+}
+
+.hud-left .omnipad-select-trigger {
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    box-sizing: border-box;
+    padding: 0 9px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    max-width: 165px;
+}
+
+.setting-group .omnipad-select-trigger {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--btn-border, rgba(255, 255, 255, 0.16));
+    color: var(--btn-text, #ffffff);
+    padding: 9px 14px;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.omnipad-select-trigger:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: var(--accent, rgba(56, 189, 248, 0.5));
+    box-shadow: 0 0 12px var(--accent-glow, rgba(56, 189, 248, 0.2));
+}
+
+.omnipad-select-trigger:active {
+    transform: scale(0.97);
+    border-color: var(--accent, #00ff88);
+}
+
+.select-trigger-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.select-trigger-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.select-trigger-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    flex-shrink: 0;
+    display: none;
+}
+
+.select-trigger-arrow {
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+/* Custom Picker Card */
+.custom-picker-card {
+    max-width: 580px !important;
+    width: 92% !important;
+    max-height: 84vh !important;
+    background: var(--panel-bg, #0d1117) !important;
+    border: 1px solid var(--btn-border, rgba(255, 255, 255, 0.2)) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 30px var(--accent-glow, rgba(0, 255, 136, 0.2)) !important;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.custom-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--btn-border, rgba(255, 255, 255, 0.1));
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.custom-picker-header .modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.custom-picker-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+}
+
+.picker-header-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.picker-header-subtitle {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.custom-picker-body {
+    padding: 12px 14px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    max-height: calc(84vh - 70px);
+}
+
+.picker-group-header {
+    padding: 10px 6px 4px 6px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.picker-group-header:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 2px;
+}
+
+.picker-group-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #38bdf8;
+}
+
+.picker-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.12s ease;
+    min-height: 52px;
+    gap: 10px;
+}
+
+.picker-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.picker-item:active {
+    transform: scale(0.985);
+    background: rgba(56, 189, 248, 0.15);
+}
+
+.picker-item.selected {
+    background: var(--accent-glow, rgba(0, 255, 136, 0.12));
+    border-color: var(--accent, #00ff88);
+    box-shadow: 0 0 16px var(--accent-glow, rgba(0, 255, 136, 0.25));
+}
+
+.picker-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.picker-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.picker-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.picker-item-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.picker-item-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.picker-item.selected .picker-item-name {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
+
+.picker-item-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+}
+
+.picker-item-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.picker-item-check {
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.hud-conn-btn {
+    border-color: rgba(56, 189, 248, 0.3) !important;
+}
+.hud-conn-btn:hover {
+    border-color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.15) !important;
+}
+
+/* ==========================================================================
+   MULTI-DEVICE RESPONSIVE FIT & SPACING SYSTEM
+   ========================================================================== */
+
+/* Compact Landscape Phones (Ultra-wide 20:9, 19.5:9, max-height: 540px) */
+@media (max-height: 540px) and (orientation: landscape) {
+    .modal-content,
+    .custom-picker-card,
+    .import-export-card,
+    .inspector-card,
+    .player-switch-card,
+    .swap-prompt-card,
+    .layout-prompt-card {
+        max-height: 94vh !important;
+        width: 88% !important;
+        max-width: 620px !important;
+        border-radius: 12px !important;
+    }
+
+    .modal-header,
+    .custom-picker-header {
+        padding: 8px 14px !important;
+    }
+
+    .modal-header h2,
+    .custom-picker-header h2 {
+        font-size: 14px !important;
+    }
+
+    .modal-body,
+    .custom-picker-body {
+        padding: 8px 14px !important;
+        gap: 5px !important;
+    }
+
+    .tab-buttons {
+        margin-bottom: 8px !important;
+        gap: 4px !important;
+    }
+
+    .tab-btn {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+    }
+
+    .setting-group {
+        margin-bottom: 8px !important;
+    }
+
+    .setting-group label {
+        font-size: 11px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .setting-group select,
+    .setting-group input[type="text"],
+    .setting-group input[type="number"],
+    .setting-group .omnipad-select-trigger {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        min-height: 36px !important;
+    }
+
+    .picker-item {
+        min-height: 42px !important;
+        padding: 6px 12px !important;
+        gap: 8px !important;
+        border-radius: 8px !important;
+    }
+
+    .picker-item-icon {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 7px !important;
+    }
+
+    .picker-item-name {
+        font-size: 12px !important;
+    }
+
+    .picker-item-sub {
+        font-size: 10px !important;
+    }
+
+    .status-pill,
+    .slot-pill-btn {
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        padding: 0 10px !important;
+        font-size: 11px !important;
+        border-radius: 16px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        line-height: 1 !important;
+    }
+
+    .hud-tools-dock {
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        padding: 0 3px !important;
+        border-radius: 16px !important;
+    }
+
+    .hud-dock-btn {
+        width: 26px !important;
+        height: 24px !important;
+        min-height: 24px !important;
+        max-height: 24px !important;
+        border-radius: 12px !important;
+    }
+
+    .hud-dock-btn svg {
+        width: 13px !important;
+        height: 13px !important;
+    }
+
+    #top-bar {
+        padding-left: 8px !important;
+        padding-left: max(8px, env(safe-area-inset-left, 8px)) !important;
+        padding-right: 8px !important;
+        padding-right: max(8px, env(safe-area-inset-right, 8px)) !important;
+        gap: 5px !important;
+        min-height: 42px !important;
+        height: 42px !important;
+    }
+
+    .hud-left {
+        gap: 5px !important;
+    }
+
+    .hud-nav-group {
+        gap: 3px !important;
+        padding: 2px 3px !important;
+    }
+
+    .hud-right {
+        gap: 4px !important;
+    }
+
+    .hud-btn {
+        height: 34px !important;
+        min-height: 34px !important;
+        max-height: 34px !important;
+        padding: 0 6px !important;
+        font-size: 11px !important;
+        gap: 3px !important;
+    }
+
+    #btn-fullscreen,
+    #btn-hide-topbar {
+        width: 34px !important;
+        min-width: 34px !important;
+        max-width: 34px !important;
+        height: 34px !important;
+    }
+
+    .hud-left .omnipad-select-trigger {
+        height: 34px !important;
+        min-height: 34px !important;
+        max-height: 34px !important;
+        max-width: 145px !important;
+        font-size: 11px !important;
+        padding: 0 8px !important;
+    }
+}
+
+/* Tablet Screens (16:10, 4:3, or min-width: 768px in landscape with ample height) */
+@media (min-width: 768px) and (min-height: 541px) {
+    .modal-content,
+    .custom-picker-card,
+    .import-export-card,
+    .inspector-card,
+    .player-switch-card {
+        max-width: 620px !important;
+        border-radius: 18px !important;
+    }
+
+    .modal-header,
+    .custom-picker-header {
+        padding: 16px 22px !important;
+    }
+
+    .modal-body,
+    .custom-picker-body {
+        padding: 16px 22px !important;
+        gap: 8px !important;
+    }
+
+    .picker-item {
+        min-height: 54px !important;
+        padding: 10px 16px !important;
+        border-radius: 12px !important;
+    }
+
+    .picker-item-icon {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 10px !important;
+    }
+
+    .picker-item-name {
+        font-size: 14px !important;
+    }
+
+    /* Floating HUD on tablets: exact uniform 36px height across all pills */
+    .status-pill,
+    .slot-pill-btn {
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        padding: 0 14px !important;
+        font-size: 12.5px !important;
+        border-radius: 18px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        line-height: 1 !important;
+    }
+
+    .hud-tools-dock {
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        padding: 0 5px !important;
+        border-radius: 18px !important;
+    }
+
+    .hud-dock-btn {
+        width: 32px !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        max-height: 30px !important;
+        border-radius: 15px !important;
+    }
+
+    .hud-dock-btn svg {
+        width: 15px !important;
+        height: 15px !important;
+    }
+
+    /* Top Navigation Bar on tablets: exact 52px height with comfortable touch targets */
+    #top-bar {
+        height: 52px !important;
+        min-height: 52px !important;
+        padding-left: max(16px, env(safe-area-inset-left, 16px)) !important;
+        padding-right: max(16px, env(safe-area-inset-right, 16px)) !important;
+        gap: 10px !important;
+    }
+
+    .hud-left {
+        gap: 8px !important;
+    }
+
+    .hud-nav-group {
+        gap: 5px !important;
+        padding: 3px 5px !important;
+        border-radius: 10px !important;
+    }
+
+    .hud-right {
+        gap: 6px !important;
+    }
+
+    .hud-btn {
+        height: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
+        padding: 0 12px !important;
+        font-size: 12.5px !important;
+        border-radius: 9px !important;
+        gap: 5px !important;
+    }
+
+    .hud-group-tools .hud-btn {
+        padding: 0 10px !important;
+        font-size: 12px !important;
+    }
+
+    #btn-fullscreen,
+    #btn-hide-topbar {
+        width: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        height: 38px !important;
+    }
+
+    .hud-left .omnipad-select-trigger {
+        height: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
+        max-width: 260px !important;
+        font-size: 12.5px !important;
+        padding: 0 12px !important;
+    }
+}
+
+/* --- Virtual Mouse Trackpad Overlay --- */
+#omnipad-trackpad-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 10, 15, 0.90);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 1600;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+#omnipad-trackpad-overlay.hidden {
+    display: none !important;
+}
+
+.trackpad-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+}
+
+.trackpad-touch-surface {
+    flex: 1;
+    background: radial-gradient(circle, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 2px solid rgba(56, 189, 248, 0.35);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    user-select: none;
+    position: relative;
+    box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.7);
+}
+
+.trackpad-hint {
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.6;
+    pointer-events: none;
+    text-align: center;
+}
+
+.trackpad-buttons-bar {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    height: 60px;
+}
+
+.tp-click-btn {
+    flex: 1;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: #f8fafc;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.08s;
+}
+
+.tp-click-btn:active, .tp-click-btn.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    transform: scale(0.98);
+}
+
+/* --- Virtual Gaming Keyboard Drawer --- */
+#omnipad-virtual-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 2px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.8);
+    z-index: 1650;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    box-sizing: border-box;
+}
+
+#omnipad-virtual-keyboard.hidden {
+    display: none !important;
+}
+
+.vk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 6px;
+}
+
+.vk-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    width: 100%;
+    justify-content: center;
+}
+
+.vk-key {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+    transition: background 0.08s, transform 0.05s;
+    user-select: none;
+}
+
+.vk-key:active, .vk-key.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    transform: translateY(2px);
+    color: #fff;
+}
+
+.vk-key.vk-gaming {
+    background: rgba(2, 132, 199, 0.35);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #38bdf8;
+}
+
+.vk-key.vk-wide {
+    flex: 1.5;
+}
+
+.vk-key.vk-extra-wide {
+    flex: 2;
+}
+
+.vk-key.vk-space {
+    flex: 4.5;
+}
+
+.vk-key.vk-func {
+    background: rgba(51, 65, 85, 0.9);
+}
+
+@media (max-width: 600px) {
+    .vk-key {
+        height: 34px;
+        font-size: 11px;
+    }
+}

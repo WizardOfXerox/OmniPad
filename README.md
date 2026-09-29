@@ -1,5 +1,11 @@
 # OmniPad - Universal Ultra-Low Latency Phone Gamepad
 
+[![CI Build](https://github.com/WizardOfXerox/OmniPad/actions/workflows/ci.yml/badge.svg)](https://github.com/WizardOfXerox/OmniPad/actions/workflows/ci.yml)
+[![.NET 8.0](https://img.shields.io/badge/.NET-8.0-512BD4.svg?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![Android](https://img.shields.io/badge/Android-API%2021--35-3DDC84.svg?logo=android&logoColor=white)](https://developer.android.com)
+[![ViGEmBus](https://img.shields.io/badge/Driver-ViGEmBus%20WHQL-0078D6.svg)](https://github.com/nefarius/ViGEmBus)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **OmniPad** turns any smartphone (Android or iOS) into a tournament-grade, ultra-low latency virtual game controller for PC.
 
 It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmBus) or **Sony DualShock 4**, and includes an automatic **Keyboard & Mouse fallback** for classic/strategy games that do not support controllers.
@@ -52,14 +58,41 @@ No installation or framework dependencies required.
 
 ---
 
+## 🏗️ Building from Source
+
+OmniPad includes automated one-click build pipelines for Windows Command Prompt and PowerShell.
+
+```cmd
+# One-click full build (PCServer, 56 unit tests, and Android APK)
+build.bat
+
+# Build only PCServer & WebClient (skips Android SDK requirements)
+build.bat -SkipAndroid
+
+# Build and package into a release-ready OmniPad-Portable.zip
+build.bat -Package
+```
+
+For complete step-by-step developer setup, toolchain requirements, manual compilation instructions, and troubleshooting guides, read the **[BUILD.md](BUILD.md)** guide.
+
+---
+
 ## 🧪 Testing & Verification
 
 Run the automated test suite:
 ```powershell
-# Unit tests for 20-byte packet serialization & sequence wrap math
+# Unit tests for 20-byte packet serialization & sequence wrap math (56/56 passing)
 dotnet test PCServer/OmniPadServer.Tests/OmniPadServer.Tests.csproj
 
 # Protocol golden vector validation & 250 Hz latency stress test
 python tools/fake_phone.py --selftest
 python tools/fake_phone.py --rate 250 --duration 10
 ```
+
+---
+
+## 📄 License & Open-Source Attribution
+
+OmniPad is open-source under the [MIT License](LICENSE).  
+Powered by the [ViGEm.NET](https://github.com/nefarius/ViGEm.NET) library and the [ViGEmBus](https://github.com/nefarius/ViGEmBus) kernel-mode driver by Benjamin Höglinger-Stelzer (Nefarius).
+

@@ -1,14 +1,12 @@
 package com.omnipad.client.protocol
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-
 object Protocol {
     const val MAGIC_BYTE: Byte = 0xDA.toByte()
     const val VERSION: Byte = 1
 
     const val DEFAULT_INPUT_PORT = 27500
     const val DISCOVERY_PORT = 27501
+    const val DEFAULT_WEB_PORT = 27502
     const val DEFAULT_DSU_PORT = 26760
 
     const val INPUT_PACKET_SIZE = 20
@@ -49,50 +47,13 @@ object Protocol {
     const val BTN_Y: Short = 0x8000.toShort()
 }
 
-data class PadState(
-    var buttons: Short = 0,
-    var leftTrigger: Byte = 0,
-    var rightTrigger: Byte = 0,
-    var thumbLX: Short = 0,
-    var thumbLY: Short = 0,
-    var thumbRX: Short = 0,
-    var thumbRY: Short = 0
+
+
+data class DiscoveredServer(
+    val ip: String,
+    val name: String,
+    val port: Int = Protocol.DEFAULT_WEB_PORT
 ) {
-    fun setButton(mask: Short, pressed: Boolean) {
-        buttons = if (pressed) {
-            (buttons.toInt() or mask.toInt()).toShort()
-        } else {
-            (buttons.toInt() and mask.toInt().inv()).toShort()
-        }
-    }
-}
-
-class PacketWriter {
-    private val buffer = ByteBuffer.allocate(Protocol.INPUT_PACKET_SIZE).order(ByteOrder.LITTLE_ENDIAN)
-
-    fun writeInput(pad: Byte, sequence: Int, state: PadState): ByteArray {
-        buffer.clear()
-        buffer.put(Protocol.MAGIC_BYTE)
-        buffer.put(Protocol.VERSION)
-        buffer.put(Protocol.MSG_INPUT)
-        buffer.put(pad)
-        buffer.putInt(sequence)
-        buffer.putShort(state.buttons)
-        buffer.put(state.leftTrigger)
-        buffer.put(state.rightTrigger)
-        buffer.putShort(state.thumbLX)
-        buffer.putShort(state.thumbLY)
-        buffer.putShort(state.thumbRX)
-        buffer.putShort(state.thumbRY)
-        return buffer.array()
-    }
-
-    fun writeSession(msgType: Byte, pad: Byte): ByteArray {
-        val sessionBuf = ByteBuffer.allocate(Protocol.SESSION_MESSAGE_SIZE).order(ByteOrder.LITTLE_ENDIAN)
-        sessionBuf.put(Protocol.MAGIC_BYTE)
-        sessionBuf.put(Protocol.VERSION)
-        sessionBuf.put(msgType)
-        sessionBuf.put(pad)
-        return sessionBuf.array()
-    }
+    val displayName: String
+        get() = if (name.isNotBlank()) "$name ($ip)" else ip
 }

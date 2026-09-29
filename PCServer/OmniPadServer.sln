@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.Tests", "OmniPadServer.Tests\OmniPadServer.Tests.csproj", "{8CA43E07-D1DB-4D1C-97E1-25E0D7297A62}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadServer.Legacinator", "OmniPadServer.Legacinator\OmniPadServer.Legacinator.csproj", "{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPadUpdater.App", "OmniPadUpdater.App\OmniPadUpdater.App.csproj", "{92E772F4-8784-4107-BDFA-1179EBA8CF06}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,5 +44,9 @@ Global
 		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1C47F8B-93E2-475D-85B9-5E9110B38CD4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92E772F4-8784-4107-BDFA-1179EBA8CF06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92E772F4-8784-4107-BDFA-1179EBA8CF06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92E772F4-8784-4107-BDFA-1179EBA8CF06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92E772F4-8784-4107-BDFA-1179EBA8CF06}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

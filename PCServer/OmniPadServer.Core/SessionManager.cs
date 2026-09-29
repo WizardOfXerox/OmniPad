@@ -33,13 +33,15 @@ public sealed class SessionManager
     private readonly ClientSession?[] _slots = new ClientSession?[IPadBackend.MaxPads];
     private readonly Dictionary<EndPoint, byte> _endpointToSlot = new();
     private readonly long _timeoutTicks;
+    private readonly long _persistentTimeoutTicks;
 
     public event Action<byte, EndPoint>? ClientConnected;
     public event Action<byte, EndPoint>? ClientDisconnected;
 
-    public SessionManager(double timeoutSeconds = Protocol.SessionTimeoutSeconds)
+    public SessionManager(double timeoutSeconds = Protocol.SessionTimeoutSeconds, double persistentTimeoutSeconds = 120.0)
     {
         _timeoutTicks = (long)(timeoutSeconds * Stopwatch.Frequency);
+        _persistentTimeoutTicks = (long)(persistentTimeoutSeconds * Stopwatch.Frequency);
     }
 
     /// <summary>
@@ -260,6 +262,7 @@ public sealed class SessionManager
 
     /// <summary>
     /// Finds any client session (UDP or WebSocket) that has exceeded the timeout threshold and disconnects them.
+    /// Persistent sessions (WebSocket) are given a generous grace period to prevent idle disconnects.
     /// </summary>
     public void CheckTimeouts()
     {
@@ -270,12 +273,16 @@ public sealed class SessionManager
             for (byte i = 0; i < IPadBackend.MaxPads; i++)
             {
                 var session = _slots[i];
-                if (session != null && (now - session.LastSeenTicks) > _timeoutTicks)
+                if (session != null)
                 {
-                    var ep = session.EndPoint;
-                    _slots[i] = null;
-                    _endpointToSlot.Remove(ep);
-                    ClientDisconnected?.Invoke(i, ep);
+                    long limit = session.IsPersistent ? _persistentTimeoutTicks : _timeoutTicks;
+                    if ((now - session.LastSeenTicks) > limit)
+                    {
+                        var ep = session.EndPoint;
+                        _slots[i] = null;
+                        _endpointToSlot.Remove(ep);
+                        ClientDisconnected?.Invoke(i, ep);
+                    }
                 }
             }
         }

@@ -194,8 +194,8 @@ public class SessionManagerTests
     [Fact]
     public void CheckTimeouts_ReapsPersistentWebSocketSessionsWhenInactive()
     {
-        // Session manager with 50 millisecond timeout
-        var manager = new SessionManager(timeoutSeconds: 0.05);
+        // Session manager with 50 millisecond timeout for both UDP and persistent sessions
+        var manager = new SessionManager(timeoutSeconds: 0.05, persistentTimeoutSeconds: 0.05);
         var ep = new IPEndPoint(IPAddress.Parse("192.168.1.50"), 8000);
 
         byte slot = manager.AssignSlot(ep, isPersistent: true, sessionId: "ws_client");

@@ -25,7 +25,7 @@ public static class Protocol
     public const int TouchpadPacketSize = 13; // Magic(1) + Ver(1) + Type(1) + Pad(1) + Flags(1) + F0(4) + F1(4)
 
     public const byte NoPad = 0xFF;
-    public const double SessionTimeoutSeconds = 5.0;
+    public const double SessionTimeoutSeconds = 30.0;
 
     // Message Types
     public const byte MsgInput = 0x01;
@@ -46,6 +46,22 @@ public static class Protocol
     public const byte MsgTouchpad = 0x11;
     public const byte MsgSetControllerType = 0x12;
     public const byte MsgActiveProfile = 0x13;
+    public const byte MsgShareLayoutRequest = 0x14;
+    public const byte MsgShareLayoutPrompt = 0x15;
+    public const byte MsgShareLayoutResponse = 0x16;
+    public const byte MsgShareLayoutDeclined = 0x17;
+    public const byte MsgShareLayoutAccepted = 0x18;
+
+    // Zero-Driver Virtual Mouse & Keyboard Message Types
+    public const byte MsgMouseMove = 0x30;
+    public const byte MsgMouseButton = 0x31;
+    public const byte MsgMouseWheel = 0x32;
+    public const byte MsgKeyboardKey = 0x33;
+
+    public const int MouseMovePacketSize = 8;
+    public const int MouseButtonPacketSize = 6;
+    public const int MouseWheelPacketSize = 6;
+    public const int KeyboardKeyPacketSize = 7;
 
     // Button Bitmasks (exact match to Windows XINPUT_GAMEPAD + PS4 Touchpad)
     [Flags]

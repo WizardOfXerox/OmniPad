@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>OmniPad - Universal Gamepad</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <link rel="stylesheet" href="css/controller.css">
     <style id="omnipad-user-custom-css"></style>
 </head>
@@ -34,62 +36,167 @@
             <span class="slot-swap-symbol">⇄</span>
         </button>
 
-        <!-- Controller Headphone Jack (Audio Streaming Toggle) -->
-        <button id="btn-audio-jack" class="audio-jack-btn" title="Headphone Jack (Stream Game Audio to Phone)">
-            <svg class="audio-jack-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
-                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
-            </svg>
-            <span id="audio-jack-text">Jack: OFF</span>
-        </button>
+        <!-- Quick Tools Dock (Unified minimalist glass dock) -->
+        <div class="hud-tools-dock">
+            <!-- Controller Headphone Jack (Audio Streaming Toggle) -->
+            <button id="btn-audio-jack" class="hud-dock-btn audio-jack-btn" title="Headphone Jack (Stream Game Audio to Phone)">
+                <svg class="audio-jack-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                </svg>
+                <span id="audio-jack-text" class="sr-only">Jack: OFF</span>
+            </button>
+
+            <!-- Wireless Microphone Toggle -->
+            <button id="btn-hud-mic" class="hud-dock-btn hud-feature-btn" title="Wireless Microphone (Stream Voice to PC)">
+                <svg class="hud-feature-icon mic-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <span id="hud-mic-text" class="sr-only">Mic: OFF</span>
+            </button>
+
+            <!-- Low-Latency Background Desktop Video Streaming Toggle -->
+            <button id="btn-hud-stream" class="hud-dock-btn hud-feature-btn" title="Game Background Streaming (Stream PC screen to gamepad)">
+                <svg class="hud-feature-icon stream-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span id="hud-stream-text" class="sr-only">Stream: OFF</span>
+            </button>
+
+            <!-- Virtual Mouse Trackpad Toggle -->
+            <button id="btn-hud-trackpad" class="hud-dock-btn hud-feature-btn" title="Virtual Mouse Trackpad Overlay">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="4"></rect>
+                    <line x1="12" y1="6" x2="12" y2="10"></line>
+                </svg>
+                <span class="sr-only">Mouse</span>
+            </button>
+
+            <!-- Virtual Keyboard Toggle -->
+            <button id="btn-hud-keyboard" class="hud-dock-btn hud-feature-btn" title="Virtual Gaming Keyboard">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="6" y1="8" x2="6.01" y2="8"></line>
+                    <line x1="10" y1="8" x2="10.01" y2="8"></line>
+                    <line x1="14" y1="8" x2="14.01" y2="8"></line>
+                    <line x1="18" y1="8" x2="18.01" y2="8"></line>
+                    <line x1="7" y1="16" x2="17" y2="16"></line>
+                </svg>
+                <span class="sr-only">Keys</span>
+            </button>
+
+            <!-- Hardware Gamepad & Touchpad Tester -->
+            <a href="/test-gamepad.html" target="_blank" id="btn-hud-tester" class="hud-dock-btn hud-feature-btn" title="Hardware Gamepad & Touchpad Tester" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
+                <svg class="hud-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="6" y1="12" x2="10" y2="12"></line>
+                    <line x1="8" y1="10" x2="8" y2="14"></line>
+                    <line x1="15" y1="13" x2="15.01" y2="13"></line>
+                    <line x1="18" y1="11" x2="18.01" y2="11"></line>
+                    <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+                </svg>
+                <span class="sr-only">Tester</span>
+            </a>
+        </div>
     </div>
 
     <!-- Collapsible Full Top Navigation Drawer (Hidden by default, slides down when toggled) -->
     <header id="top-bar" class="collapsed">
         <div class="hud-left">
-            <label class="preset-label" for="preset-selector">Preset:</label>
-            <select id="preset-selector">
-                <optgroup label="Modern Consoles">
-                    <option value="xbox">Xbox 360 Standard</option>
-                    <option value="playstation">PlayStation DualShock (+ Touchpad)</option>
-                    <option value="switch_pro">Nintendo Switch Pro</option>
-                </optgroup>
-                <optgroup label="Fighting & Arcade">
-                    <option value="dual_dpad">D-Pad Dual Cross (Retro & Fighter)</option>
-                    <option value="arcade">Arcade Fightstick (Sanwa Vewlix)</option>
-                    <option value="hitbox">Tekken Hitbox (8-Way)</option>
-                    <option value="sega_saturn">Sega Saturn / Genesis (6-Btn)</option>
-                </optgroup>
-                <optgroup label="Retro Consoles">
-                    <option value="gamecube">Nintendo GameCube</option>
-                    <option value="n64">Nintendo 64</option>
-                    <option value="snes_retro">Retro SNES / Classic</option>
-                    <option value="ps1_classic">PlayStation 1 Classic (PSX)</option>
-                    <option value="nes_retro">NES / Game Boy Classic</option>
-                </optgroup>
-                <optgroup label="Handhelds">
-                    <option value="ds_3ds">Nintendo 3DS / Dual Screen</option>
-                </optgroup>
-                <optgroup label="Action & Simulators">
-                    <option value="twinstick">Twin-Stick Shooter</option>
-                    <option value="fps">FPS Precision (Gyro)</option>
-                    <option value="racing">Racing Wheel & Pedals</option>
-                    <option value="hotas_flight">Flight Sim / HOTAS</option>
-                    <option value="mmo_action">MMO / RPG Action Bar</option>
-                </optgroup>
-                <optgroup label="Utility & Diagnostics">
-                    <option value="touchpad_only">Touchpad-Only (Edge-to-Edge)</option>
-                    <option value="trackpad">Couch Desktop Mouse</option>
-                    <option value="debug_all">Diagnostic & Debug (All Controls)</option>
-                </optgroup>
-                <optgroup label="Custom Presets" id="optgroup-custom-presets">
-                    <!-- Populated dynamically -->
-                </optgroup>
-            </select>
-            <button id="btn-topbar-slot" class="hud-btn hud-slot-btn" title="Switch Player Slot">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <span id="topbar-slot-text">Slot: P1</span>
-            </button>
+            <!-- Group 1: Layout & Multiplayer -->
+            <div class="hud-nav-group hud-group-layout">
+                <label class="preset-label" for="preset-selector">Preset:</label>
+                <select id="preset-selector">
+                    <optgroup label="Modern Consoles">
+                        <option value="xbox">Xbox 360 Standard</option>
+                        <option value="xbox_elite">Xbox Elite Series 2 (Paddles)</option>
+                        <option value="playstation">PlayStation DualShock (+ Touchpad)</option>
+                        <option value="ps5_dualsense">PS5 DualSense Pro (+ Touchpad)</option>
+                        <option value="switch_pro">Nintendo Switch Pro</option>
+                    </optgroup>
+                    <optgroup label="Fighting & Arcade">
+                        <option value="dual_dpad">D-Pad Dual Cross (Retro & Fighter)</option>
+                        <option value="arcade">Arcade Fightstick (Sanwa Vewlix)</option>
+                        <option value="neogeo_arcade">Neo Geo Arcade (4-Button MVS)</option>
+                        <option value="hitbox">Tekken Hitbox (8-Way)</option>
+                        <option value="sega_saturn">Sega Saturn / Genesis (6-Btn)</option>
+                    </optgroup>
+                    <optgroup label="Retro Consoles">
+                        <option value="gamecube">Nintendo GameCube</option>
+                        <option value="n64">Nintendo 64</option>
+                        <option value="snes_retro">Retro SNES / Classic</option>
+                        <option value="ps1_classic">PlayStation 1 Classic (PSX)</option>
+                        <option value="nes_retro">NES / Game Boy Classic</option>
+                    </optgroup>
+                    <optgroup label="Handhelds">
+                        <option value="joycon_dual">Nintendo Switch Joy-Cons Dual</option>
+                        <option value="ds_3ds">Nintendo 3DS / Dual Screen</option>
+                    </optgroup>
+                    <optgroup label="Action & Simulators">
+                        <option value="twinstick">Twin-Stick Shooter</option>
+                        <option value="fps">FPS Precision (Gyro)</option>
+                        <option value="racing">Racing Wheel & Pedals</option>
+                        <option value="hotas_flight">Flight Sim / HOTAS</option>
+                        <option value="mmo_action">MMO / RPG Action Bar</option>
+                    </optgroup>
+                    <optgroup label="Utility & Diagnostics">
+                        <option value="touchpad_only">Touchpad-Only (Edge-to-Edge)</option>
+                        <option value="trackpad">Couch Desktop Mouse</option>
+                        <option value="debug_all">Diagnostic & Debug (All Controls)</option>
+                    </optgroup>
+                    <optgroup label="Custom Presets" id="optgroup-custom-presets">
+                        <!-- Populated dynamically -->
+                    </optgroup>
+                </select>
+                <button id="btn-topbar-slot" class="hud-btn hud-slot-btn" title="Switch Player Slot">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span id="topbar-slot-text">P1</span>
+                </button>
+                <button id="btn-topbar-share" class="hud-btn hud-share-btn" title="Beam / Share Layout Wirelessly">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    </span>
+                    <span>Beam</span>
+                </button>
+            </div>
+
+            <!-- Group 2: Connectivity & System Tools -->
+            <div class="hud-nav-group hud-group-tools">
+                <button id="btn-topbar-connectivity" class="hud-btn hud-conn-btn" title="Switch Connection Mode (USB, WiFi, Bluetooth, Offline)">
+                    <span id="topbar-conn-icon" class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    </span>
+                    <span id="topbar-conn-text">Auto</span>
+                </button>
+                <button id="btn-topbar-stream" class="hud-btn hud-stream-btn" title="Game Background Streaming">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    </span>
+                    <span id="topbar-stream-text">Stream</span>
+                </button>
+                <button id="btn-topbar-mic" class="hud-btn hud-mic-btn" title="Wireless Microphone">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </span>
+                    <span id="topbar-mic-text">Mic</span>
+                </button>
+                <button id="btn-topbar-trackpad" class="hud-btn hud-trackpad-btn" title="Virtual Mouse Trackpad">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="4"></rect><line x1="12" y1="6" x2="12" y2="10"></line></svg>
+                    </span>
+                    <span>Mouse</span>
+                </button>
+                <button id="btn-topbar-keyboard" class="hud-btn hud-kb-btn" title="Virtual Gaming Keyboard">
+                    <span class="hud-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                    </span>
+                    <span>Keys</span>
+                </button>
+            </div>
         </div>
 
         <div class="hud-right">
@@ -109,6 +216,9 @@
             </button>
         </div>
     </header>
+
+    <!-- Low-Latency Background Desktop Video Streaming Canvas -->
+    <canvas id="game-stream-canvas" class="game-stream-canvas hidden"></canvas>
 
     <!-- Canvas Workspace for Virtual Gamepad Controls (Takes 100% full screen) -->
     <main id="gamepad-container">
@@ -225,14 +335,137 @@
             <div class="modal-body">
                 <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="tab-general">General</button>
-                    <button class="tab-btn" data-tab="tab-design">Design & Themes</button>
-                    <button class="tab-btn" data-tab="tab-gyro">Gyro & Motion</button>
-                    <button class="tab-btn" data-tab="tab-macros">Macros & Combos</button>
+                    <button class="tab-btn" data-tab="tab-engine">Engine &amp; Drivers</button>
+                    <button class="tab-btn" data-tab="tab-design">Design &amp; Themes</button>
+                    <button class="tab-btn" data-tab="tab-gyro">Gyro &amp; Motion</button>
+                    <button class="tab-btn" data-tab="tab-macros">Macros &amp; Combos</button>
                     <button class="tab-btn" data-tab="tab-profiles">Profiles</button>
+                </div>
+
+                <!-- Tab: Engine & Drivers -->
+                <div id="tab-engine" class="tab-pane">
+                    <div class="setting-group">
+                        <label>Active Controller Profile Preset</label>
+                        <select id="setting-controller-preset">
+                            <optgroup label="Standard Gaming (Anti-Cheat & Games)">
+                                <option value="Xbox360_WHQL">Microsoft Xbox 360 (ViGEm KMDF WHQL)</option>
+                                <option value="DualShock4_WHQL">Sony DualShock 4 (ViGEm KMDF WHQL)</option>
+                            </optgroup>
+                            <optgroup label="PlayStation Suite">
+                                <option value="DualSense_PS5">Sony DualSense PS5 (Touchpad + Gyro)</option>
+                                <option value="DualSense_Edge">Sony DualSense Edge (Paddles + Touchpad)</option>
+                            </optgroup>
+                            <optgroup label="Nintendo Suite (Emulators & Smash)">
+                                <option value="Switch_Pro">Nintendo Switch Pro Controller (6-Axis Motion)</option>
+                                <option value="JoyCon_L">Nintendo Joy-Con Left</option>
+                                <option value="JoyCon_R">Nintendo Joy-Con Right</option>
+                                <option value="GameCube">Nintendo GameCube (Dolphin / Smash Bros)</option>
+                            </optgroup>
+                            <optgroup label="Pro Handhelds & Xbox Elite">
+                                <option value="SteamDeck">Valve Steam Deck (Dual Trackpads + Gyro)</option>
+                                <option value="Xbox_Elite_Series2">Xbox Elite Series 2 (4 Back Paddles)</option>
+                                <option value="Xbox_Series_XS">Xbox Series X|S Wireless Controller</option>
+                            </optgroup>
+                            <optgroup label="Simulations & Specialty">
+                                <option value="RacingWheel_Logitech">Logitech G29 Racing Wheel (Tilt-to-Steer Gyro)</option>
+                                <option value="FlightSim_HOTAS">Saitek X52 Pro HOTAS (Flight Stick & Throttle)</option>
+                                <option value="ArcadeStick_HORI">HORI Fighting Stick Alpha (Arcade 8-Btn)</option>
+                            </optgroup>
+                            <optgroup label="Zero-Driver Fallback">
+                                <option value="KeyboardMouse">Virtual Keyboard &amp; Mouse (SendInput)</option>
+                            </optgroup>
+                        </select>
+                        <p id="preset-description" class="hint" style="margin-top: 4px; font-size: 11px; color: #38bdf8;">
+                            Authentic controller emulation powered by HIDOmniPadBus.
+                        </p>
+                    </div>
+
+                    <div class="setting-group" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                        <label style="color: #f8fafc; font-size: 13px; font-weight: 600;">HIDOmniPadBus Driver Suite</label>
+                        <div style="margin: 6px 0; font-size: 12px; color: #cbd5e1;">
+                            Status: <span id="bus-driver-status-badge" style="display:inline-block; padding: 2px 8px; border-radius: 4px; background: #0284c7; color: white; font-weight: 600;">Detecting...</span>
+                        </div>
+                        <p id="bus-driver-summary" style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
+                            Managing ViGEmBus kernel driver and HIDMaestro UMDF2 driver.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-bus-install" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer;">Install / Repair Drivers</button>
+                            <button id="btn-bus-uninstall" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">Uninstall Drivers</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-group" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
+                        <label style="color: #f8fafc; font-size: 13px; font-weight: 600;">OmniPad Software Updater</label>
+                        <div style="margin: 6px 0; font-size: 12px; color: #cbd5e1;">
+                            Installed Version: <span id="updater-version-badge" style="font-weight: 600; color: #38bdf8;">v1.2.0</span>
+                        </div>
+                        <p id="updater-status-text" style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
+                            Check for server, web client, and driver updates.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-updater-check" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">Check for Updates</button>
+                            <button id="btn-updater-apply" class="btn" style="flex: 1; font-size: 11px; padding: 6px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; display: none;">Update Now</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-group" id="bt-hid-settings-card" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2); margin-top: 10px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <label style="color: #f8fafc; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline></svg>
+                                Direct Bluetooth HID (Serverless)
+                            </label>
+                            <span id="bt-status-badge" style="display:inline-block; padding: 2px 8px; border-radius: 4px; background: #475569; color: white; font-size: 11px; font-weight: 600;">Standby</span>
+                        </div>
+                        <p id="bt-status-summary" style="font-size: 11px; color: #94a3b8; margin: 8px 0;">
+                            Turn your Android device into a physical Bluetooth gamepad. Connect directly to PC, Mac, Switch, or Smart TV without running OmniPadServer.
+                        </p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btn-bt-enable" class="btn" style="flex: 1; font-size: 11px; padding: 7px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Enable Bluetooth Mode</button>
+                            <button id="btn-bt-disable" class="btn" style="flex: 1; font-size: 11px; padding: 7px; background: #334155; color: #cbd5e1; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Switch to WiFi</button>
+                        </div>
+                        <div id="bt-host-info" style="margin-top: 8px; font-size: 11px; color: #38bdf8; display: none;">
+                            Connected Host: <strong id="bt-host-name">None</strong>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab: General -->
                 <div id="tab-general" class="tab-pane active">
+                    <div class="setting-group">
+                        <label>Connectivity &amp; Transport Mode</label>
+                        <select id="setting-connectivity-mode" data-picker-title="Select Connection Mode" data-picker-icon="bolt">
+                            <optgroup label="Physical Cable &amp; Wireless">
+                                <option value="auto">Auto-Detect (Fastest: USB ➔ WiFi ➔ Bluetooth)</option>
+                                <option value="usb">Wired USB Loopback (Ultra-Low Latency, ADB)</option>
+                                <option value="wifi">WiFi LAN (Local Network Server)</option>
+                            </optgroup>
+                            <optgroup label="Direct Hardware &amp; Standalone">
+                                <option value="bluetooth">Direct Bluetooth HID (Serverless Gamepad)</option>
+                                <option value="offline">Offline Standalone (Tester &amp; Customizer)</option>
+                            </optgroup>
+                        </select>
+                        <p class="hint" id="conn-mode-hint" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
+                            Select how OmniPad communicates with your gaming host.
+                        </p>
+                    </div>
+
+                    <div class="setting-group" id="group-server-selection">
+                        <label>Active PC Gaming Host</label>
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                            <button type="button" id="btn-switch-server" class="btn" style="flex: 1; padding: 10px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; cursor: pointer;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                <span id="label-switch-server">Switch Server</span>
+                            </button>
+                            <button type="button" id="btn-scan-qr" class="btn" style="flex: 1; padding: 10px 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; cursor: pointer;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span>Scan QR Code</span>
+                            </button>
+                        </div>
+                        <p class="hint" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
+                            Discover and connect to other OmniPad PC servers or scan terminal QR code.
+                        </p>
+                    </div>
+
                     <div class="setting-group">
                         <label>Visual Theme</label>
                         <select id="setting-theme">
@@ -264,6 +497,15 @@
                     <div class="setting-group">
                         <label>Headphone Jack Volume: <span id="val-audio-volume">85%</span></label>
                         <input type="range" id="setting-audio-volume" min="0" max="100" value="85">
+                    </div>
+                    <div class="setting-group">
+                        <label>Controller Opacity (Stream Transparency): <span id="val-control-opacity">85%</span></label>
+                        <input type="range" id="setting-control-opacity" min="10" max="100" value="85">
+                        <p class="hint">Adjust how transparent the controller buttons and sticks appear over the background game stream.</p>
+                    </div>
+                    <div class="setting-group">
+                        <label>Virtual Mouse Trackpad Sensitivity: <span id="val-trackpad-sens">1.4x</span></label>
+                        <input type="range" id="setting-trackpad-sens" min="5" max="35" value="14">
                     </div>
                     <div class="setting-group">
                         <label>Screen Brightness Dimmer: <span id="val-brightness">100%</span></label>
@@ -522,9 +764,9 @@
                 <div class="setting-group" id="insp-macro-group" style="display: none;">
                     <label>Assigned Macro</label>
                     <select id="insp-elem-macro">
-                        <option value="macro_ewgf">⚡ EWGF (Tekken Electric)</option>
-                        <option value="macro_slide_cancel">⚡ Slide-Cancel (COD Sprint)</option>
-                        <option value="macro_hadouken">⚡ Hadouken (QCF + P)</option>
+                        <option value="macro_ewgf">EWGF (Tekken Electric)</option>
+                        <option value="macro_slide_cancel">Slide-Cancel (COD Sprint)</option>
+                        <option value="macro_hadouken">Hadouken (QCF + P)</option>
                     </select>
                 </div>
                 <div class="setting-group-row">
@@ -597,17 +839,224 @@
         </div>
     </div>
 
+    <!-- Modal: Share Layout Target Selector -->
+    <div id="modal-share-layout-target" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-share-layout-target"></div>
+        <div class="modal-content player-switch-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                    <h2>Share Layout</h2>
+                </div>
+                <button id="btn-close-share-layout-target" class="btn-icon" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="player-switch-body">
+                <p class="modal-subtitle">Beam your active layout wirelessly to another connected player or broadcast to all.</p>
+                <div id="share-layout-targets-container" class="player-slots-grid">
+                    <!-- Rendered dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Incoming Layout Share Prompt -->
+    <div id="modal-layout-prompt" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-layout-prompt"></div>
+        <div class="modal-content swap-prompt-card layout-prompt-card">
+            <div class="swap-icon-badge layout-icon-badge">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2">
+                    <rect x="2" y="6" width="20" height="12" rx="4"/>
+                    <line x1="6" y1="12" x2="10" y2="12"/>
+                    <line x1="8" y1="10" x2="8" y2="14"/>
+                    <circle cx="16" cy="10" r="1" fill="currentColor"/>
+                    <circle cx="18" cy="12" r="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <h2 id="layout-prompt-title">Incoming Layout</h2>
+            <p id="layout-prompt-desc">Player 1 shared a controller layout with you.</p>
+            <div class="layout-prompt-preview">
+                <span class="layout-prompt-name" id="layout-prompt-name">Custom Layout</span>
+                <span class="layout-prompt-badge" id="layout-prompt-badge">0 controls</span>
+            </div>
+            <div class="swap-timer-wrapper">
+                <div class="swap-timer-bar-container">
+                    <div id="layout-timer-bar" class="swap-timer-bar"></div>
+                </div>
+                <span id="layout-timer-sec" class="swap-timer-sec">15s</span>
+            </div>
+            <div class="swap-actions">
+                <button id="btn-accept-layout" class="btn-swap-choice btn-accept">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Accept & Apply</span>
+                </button>
+                <button id="btn-decline-layout" class="btn-swap-choice btn-decline">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>Decline</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Universal Custom Gaming Picker (Replaces OS Native Select Dialogs) -->
+    <div id="modal-custom-picker" class="modal hidden">
+        <div class="modal-backdrop" id="backdrop-custom-picker"></div>
+        <div class="modal-content custom-picker-card">
+            <div class="modal-header custom-picker-header">
+                <div class="modal-title-wrap">
+                    <span id="custom-picker-icon" class="picker-header-icon"></span>
+                    <div>
+                        <h2 id="custom-picker-title">Select Preset</h2>
+                        <p id="custom-picker-subtitle" class="picker-header-subtitle">Choose a controller layout or profile</p>
+                    </div>
+                </div>
+                <button id="btn-close-custom-picker" class="btn-icon" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body custom-picker-body" id="custom-picker-items-container">
+                <!-- Categorized items with optgroup headers rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Virtual Mouse Trackpad Overlay -->
+    <div id="omnipad-trackpad-overlay" class="hidden">
+        <div class="trackpad-header">
+            <div class="trackpad-title-wrap" style="display: flex; align-items: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2">
+                    <rect x="5" y="2" width="14" height="20" rx="4"></rect>
+                    <line x1="12" y1="6" x2="12" y2="10"></line>
+                </svg>
+                <span style="font-weight: 700; font-size: 15px; margin-left: 8px; color: #f8fafc;">Virtual Mouse Trackpad</span>
+                <span class="code-badge" style="margin-left: 8px; font-size: 11px;">Zero-Driver</span>
+            </div>
+            <button id="btn-close-trackpad" class="btn-icon" title="Close Trackpad">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div id="trackpad-touch-surface" class="trackpad-touch-surface">
+            <div class="trackpad-hint">
+                <div style="font-size: 16px; font-weight: 600; color: #38bdf8; margin-bottom: 6px;">Touch &amp; Slide to Move Cursor</div>
+                <div>1-Finger Tap = Left Click &bull; 2-Finger Tap = Right Click</div>
+                <div>2-Finger Slide = Scroll Wheel &bull; Coexists with Physical Mouse</div>
+            </div>
+        </div>
+        <div class="trackpad-buttons-bar">
+            <button id="tp-btn-left-click" class="tp-click-btn">LEFT CLICK</button>
+            <button id="tp-btn-right-click" class="tp-click-btn">RIGHT CLICK</button>
+        </div>
+    </div>
+
+    <!-- Modal: Virtual Gaming Keyboard Drawer -->
+    <div id="omnipad-virtual-keyboard" class="hidden">
+        <div class="vk-header">
+            <div style="display: flex; align-items: center; gap: 8px; color: #38bdf8;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                <span style="font-weight: 700; font-size: 14px; color: #f8fafc;">Virtual Gaming Keyboard</span>
+                <span class="code-badge" style="font-size: 11px;">Zero-Driver</span>
+            </div>
+            <button id="btn-close-keyboard" class="btn-icon" title="Close Keyboard">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <!-- Function / Number Row -->
+        <div class="vk-row">
+            <button class="vk-key vk-func" data-vk="0x1B">ESC</button>
+            <button class="vk-key" data-vk="0x31">1</button>
+            <button class="vk-key" data-vk="0x32">2</button>
+            <button class="vk-key" data-vk="0x33">3</button>
+            <button class="vk-key" data-vk="0x34">4</button>
+            <button class="vk-key" data-vk="0x35">5</button>
+            <button class="vk-key" data-vk="0x36">6</button>
+            <button class="vk-key" data-vk="0x37">7</button>
+            <button class="vk-key" data-vk="0x38">8</button>
+            <button class="vk-key" data-vk="0x39">9</button>
+            <button class="vk-key" data-vk="0x30">0</button>
+            <button class="vk-key" data-vk="0xBD">-</button>
+            <button class="vk-key" data-vk="0xBB">=</button>
+            <button class="vk-key vk-wide" data-vk="0x08">BKSP</button>
+        </div>
+        <!-- Row 2 -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x09">TAB</button>
+            <button class="vk-key" data-vk="0x51">Q</button>
+            <button class="vk-key vk-gaming" data-vk="0x57">W</button>
+            <button class="vk-key" data-vk="0x45">E</button>
+            <button class="vk-key" data-vk="0x52">R</button>
+            <button class="vk-key" data-vk="0x54">T</button>
+            <button class="vk-key" data-vk="0x59">Y</button>
+            <button class="vk-key" data-vk="0x55">U</button>
+            <button class="vk-key" data-vk="0x49">I</button>
+            <button class="vk-key" data-vk="0x4F">O</button>
+            <button class="vk-key" data-vk="0x50">P</button>
+            <button class="vk-key" data-vk="0xDB">[</button>
+            <button class="vk-key" data-vk="0xDD">]</button>
+            <button class="vk-key" data-vk="0xDC">\</button>
+        </div>
+        <!-- Row 3 -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x14">CAPS</button>
+            <button class="vk-key vk-gaming" data-vk="0x41">A</button>
+            <button class="vk-key vk-gaming" data-vk="0x53">S</button>
+            <button class="vk-key vk-gaming" data-vk="0x44">D</button>
+            <button class="vk-key" data-vk="0x46">F</button>
+            <button class="vk-key" data-vk="0x47">G</button>
+            <button class="vk-key" data-vk="0x48">H</button>
+            <button class="vk-key" data-vk="0x4A">J</button>
+            <button class="vk-key" data-vk="0x4B">K</button>
+            <button class="vk-key" data-vk="0x4C">L</button>
+            <button class="vk-key" data-vk="0xBA">;</button>
+            <button class="vk-key" data-vk="0xDE">'</button>
+            <button class="vk-key vk-extra-wide" data-vk="0x0D">ENTER</button>
+        </div>
+        <!-- Row 4 -->
+        <div class="vk-row">
+            <button class="vk-key vk-extra-wide" data-vk="0x10">SHIFT</button>
+            <button class="vk-key" data-vk="0x5A">Z</button>
+            <button class="vk-key" data-vk="0x58">X</button>
+            <button class="vk-key" data-vk="0x43">C</button>
+            <button class="vk-key" data-vk="0x56">V</button>
+            <button class="vk-key" data-vk="0x42">B</button>
+            <button class="vk-key" data-vk="0x4E">N</button>
+            <button class="vk-key" data-vk="0x4D">M</button>
+            <button class="vk-key" data-vk="0xBC">,</button>
+            <button class="vk-key" data-vk="0xBE">.</button>
+            <button class="vk-key" data-vk="0xBF">/</button>
+            <button class="vk-key" data-vk="0x26">&uarr;</button>
+            <button class="vk-key vk-wide" data-vk="0x10">SHIFT</button>
+        </div>
+        <!-- Row 5: Space & Nav -->
+        <div class="vk-row">
+            <button class="vk-key vk-wide" data-vk="0x11">CTRL</button>
+            <button class="vk-key vk-wide" data-vk="0x12">ALT</button>
+            <button class="vk-key vk-space" data-vk="0x20">SPACE</button>
+            <button class="vk-key" data-vk="0x25">&larr;</button>
+            <button class="vk-key" data-vk="0x28">&darr;</button>
+            <button class="vk-key" data-vk="0x27">&rarr;</button>
+        </div>
+    </div>
+
     <!-- HUD Toast for Notifications -->
     <div id="hud-toast" class="hud-toast hidden"></div>
 
     <!-- Scripts -->
     <script src="js/network.js"></script>
     <script src="js/audioEngine.js"></script>
+    <script src="js/micEngine.js"></script>
+    <script src="js/screenStreamEngine.js"></script>
+    <script src="js/mouseKeyboardEngine.js"></script>
     <script src="js/touchEngine.js"></script>
     <script src="js/gyroEngine.js"></script>
     <script src="js/macroEngine.js"></script>
     <script src="js/customizer.js"></script>
     <script src="js/layouts.js"></script>
+    <script src="js/customSelect.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

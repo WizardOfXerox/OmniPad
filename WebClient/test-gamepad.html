@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniPad - Hardware Gamepad & Touchpad Tester</title>
+    <style>
+        :root {
+            --bg-primary: #0a0d14;
+            --bg-card: #121824;
+            --bg-subtle: #1a2234;
+            --border-color: #243048;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-primary); color: var(--text-main); padding: 20px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px; }
+        .logo-group h1 { font-size: 22px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+        .logo-group p { font-size: 13px; color: var(--text-muted); }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+        .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        .btn { background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .btn:hover { background: #1d4ed8; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); }
+        .btn-outline:hover { background: var(--bg-subtle); color: var(--text-main); }
+        .btn-green { background: #059669; }
+        .btn-green:hover { background: #047857; }
+        .btn-cyan { background: #0891b2; }
+        .btn-cyan:hover { background: #0e7490; }
+
+        .banner-tip { background: rgba(6, 182, 212, 0.08); border-left: 4px solid var(--accent-cyan); padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: 13px; line-height: 1.4; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; position: relative; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-weight: 600; font-size: 14px; color: #e2e8f0; }
+
+        /* Gamepad Visualizer */
+        .gamepad-container { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 10px 0; }
+        .gamepad-svg { width: 100%; max-width: 520px; height: auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
+        .gp-btn { transition: fill 0.08s, filter 0.08s; fill: #1e293b; }
+        .gp-btn.active { fill: #10b981 !important; filter: drop-shadow(0 0 6px #10b981); }
+        .gp-stick-head { transition: transform 0.04s ease-out; transform-origin: center; }
+
+        /* Sticks Radar Grid */
+        .stick-radar-box { display: flex; flex-direction: column; align-items: center; }
+        .radar-canvas-wrap { position: relative; width: 160px; height: 160px; }
+        .radar-canvas { background: #090d16; border: 1px solid #1e293b; border-radius: 50%; width: 160px; height: 160px; }
+        .stick-telemetry-text { font-family: Consolas, monospace; font-size: 11px; margin-top: 8px; color: #94a3b8; line-height: 1.5; text-align: center; }
+
+        /* Triggers */
+        .trigger-wrap { margin-bottom: 12px; }
+        .trigger-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: var(--text-muted); font-family: Consolas, monospace; }
+        .trigger-bar { background: #090d16; height: 14px; border-radius: 7px; border: 1px solid #1e293b; overflow: hidden; position: relative; }
+        .trigger-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.04s; }
+
+        /* Touchpad Area */
+        .touchpad-box { display: flex; flex-direction: column; align-items: center; }
+        .touchpad-canvas { background: #07090f; border: 2px solid #1e293b; border-radius: 10px; width: 100%; max-width: 480px; height: 180px; position: relative; cursor: crosshair; }
+        .touchpad-stats { display: flex; justify-content: space-around; width: 100%; margin-top: 8px; font-family: Consolas, monospace; font-size: 11px; color: #94a3b8; }
+
+        /* Buttons Grid */
+        .button-pill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 6px; }
+        .btn-pill { background: #162032; border: 1px solid #243048; border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 11px; font-family: Consolas, monospace; color: #94a3b8; transition: all 0.06s; }
+        .btn-pill.active { background: #059669; border-color: #10b981; color: #fff; font-weight: 700; transform: scale(0.96); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+
+        /* Haptic Rumble Controls */
+        .rumble-slider-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 12px; color: var(--text-muted); }
+        .rumble-slider-row input[type=range] { flex: 1; margin: 0 12px; accent-color: #06b6d4; }
+        
+        /* Event Log */
+        .log-terminal { background: #05070c; border: 1px solid #1a2336; border-radius: 8px; padding: 10px; font-family: Consolas, monospace; font-size: 11px; height: 130px; overflow-y: auto; color: #67e8f9; }
+        .log-row { margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-group">
+                <h1>🎮 OmniPad Gamepad & Touchpad Tester</h1>
+                <p>Hardware-grade diagnostics, stick circularity radar, multi-touch visualizer & haptic motor verifier</p>
+            </div>
+            <div class="header-actions">
+                <span id="focus-badge" class="badge badge-yellow">● Tab Focus Needed</span>
+                <span id="pad-badge" class="badge badge-red">0 Gamepads Found</span>
+                <span id="hz-badge" class="badge badge-blue">-- Hz</span>
+                <a href="/" class="btn btn-outline">← Back to OmniPad</a>
+            </div>
+        </header>
+
+        <div class="banner-tip" id="focus-banner">
+            <div>
+                <strong>Browser Focus Required:</strong> Click anywhere on this page and wiggle your controller sticks or press any button. Browsers require user interaction before activating the Gamepad API.
+            </div>
+            <button class="btn btn-green" onclick="triggerPulse()">⚡ Test Pulse (Wake Browser)</button>
+        </div>
+
+        <!-- Mode & Engine Switcher -->
+        <div class="card" style="margin-bottom: 16px; padding: 12px 18px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #94a3b8;">
+                    <strong>Emulation Engine:</strong> <span id="current-engine" style="color: #38bdf8;">Checking...</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-cyan" onclick="switchMode('dualshock4')">DualShock 4 (Touchpad + Motion)</button>
+                    <button class="btn btn-outline" onclick="switchMode('xbox360')">Xbox 360 (ViGEm)</button>
+                    <button class="btn btn-outline" onclick="switchMode('hidmaestro')">Universal DualSense (HIDMaestro)</button>
+                    <button class="btn btn-outline" id="btn-toggle-debug" onclick="toggleDebugMode()">Toggle Server Telemetry</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Visualizer Grid -->
+        <div class="grid-2">
+            <!-- Left: Interactive Controller SVG -->
+            <div class="card">
+                <div class="card-header">
+                    <span>Virtual Controller Layout</span>
+                    <span id="pad-name-header" style="font-size: 11px; color: var(--text-muted);">Standard Mapping</span>
+                </div>
+                <div class="gamepad-container">
+                    <svg class="gamepad-svg" viewBox="0 0 600 380">
+                        <!-- Controller Body Shell -->
+                        <path d="M 130 50 C 230 40, 370 40, 470 50 C 530 60, 580 180, 560 310 C 550 360, 490 370, 460 310 C 430 250, 410 230, 370 230 C 330 230, 320 250, 300 250 C 280 250, 270 230, 230 230 C 190 230, 170 250, 140 310 C 110 370, 50 360, 40 310 C 20 180, 70 60, 130 50 Z" 
+                              fill="#131b2c" stroke="#25354e" stroke-width="3"/>
+                        
+                        <!-- DualShock Touchpad Area -->
+                        <rect id="svg-touchpad" x="210" y="65" width="180" height="95" rx="8" fill="#1b2438" stroke="#334155" stroke-width="2"/>
+                        <text x="300" y="115" fill="#475569" font-size="10" font-family="sans-serif" text-anchor="middle">TOUCHPAD (1920x942)</text>
+                        <circle id="svg-tp-f0" cx="300" cy="115" r="7" fill="#06b6d4" opacity="0" filter="drop-shadow(0 0 5px #06b6d4)"/>
+                        <circle id="svg-tp-f1" cx="300" cy="115" r="7" fill="#ec4899" opacity="0" filter="drop-shadow(0 0 5px #ec4899)"/>
+
+                        <!-- Bumpers & Triggers -->
+                        <rect id="svg-btn-4" class="gp-btn" x="120" y="32" width="75" height="18" rx="6"/>
+                        <rect id="svg-btn-5" class="gp-btn" x="405" y="32" width="75" height="18" rx="6"/>
+                        <text x="157" y="45" fill="#94a3b8" font-size="9" text-anchor="middle">L1 / LB</text>
+                        <text x="442" y="45" fill="#94a3b8" font-size="9" text-anchor="middle">R1 / RB</text>
+
+                        <!-- D-Pad -->
+                        <g transform="translate(135, 140)">
+                            <path id="svg-btn-12" class="gp-btn" d="M 25 0 L 45 0 L 45 25 L 25 25 Z"/>
+                            <path id="svg-btn-13" class="gp-btn" d="M 25 45 L 45 45 L 45 70 L 25 70 Z"/>
+                            <path id="svg-btn-14" class="gp-btn" d="M 0 25 L 25 25 L 25 45 L 0 45 Z"/>
+                            <path id="svg-btn-15" class="gp-btn" d="M 45 25 L 70 25 L 70 45 L 45 45 Z"/>
+                            <rect x="25" y="25" width="20" height="20" fill="#1e293b"/>
+                        </g>
+
+                        <!-- Action Buttons (A/B/X/Y or Cross/Circle/Square/Triangle) -->
+                        <g transform="translate(425, 140)">
+                            <circle id="svg-btn-3" class="gp-btn" cx="35" cy="12" r="14"/> <!-- Y / Triangle -->
+                            <text x="35" y="16" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">Y</text>
+
+                            <circle id="svg-btn-0" class="gp-btn" cx="35" cy="58" r="14"/> <!-- A / Cross -->
+                            <text x="35" y="62" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">A</text>
+
+                            <circle id="svg-btn-2" class="gp-btn" cx="12" cy="35" r="14"/> <!-- X / Square -->
+                            <text x="12" y="39" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">X</text>
+
+                            <circle id="svg-btn-1" class="gp-btn" cx="58" cy="35" r="14"/> <!-- B / Circle -->
+                            <text x="58" y="39" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">B</text>
+                        </g>
+
+                        <!-- Center Buttons -->
+                        <rect id="svg-btn-8" class="gp-btn" x="180" y="100" width="22" height="12" rx="4"/>
+                        <rect id="svg-btn-9" class="gp-btn" x="398" y="100" width="22" height="12" rx="4"/>
+                        <circle id="svg-btn-16" class="gp-btn" cx="300" cy="195" r="15"/>
+                        <text x="300" y="198" fill="#64748b" font-size="9" text-anchor="middle">PS</text>
+
+                        <!-- Left Analog Stick (LS / L3) -->
+                        <g id="svg-stick-left-group" transform="translate(200, 240)">
+                            <circle cx="0" cy="0" r="38" fill="#0b101b" stroke="#25354e" stroke-width="2"/>
+                            <circle id="svg-stick-left" class="gp-stick-head" cx="0" cy="0" r="26" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                            <circle id="svg-btn-10" cx="0" cy="0" r="8" fill="#334155"/>
+                        </g>
+
+                        <!-- Right Analog Stick (RS / R3) -->
+                        <g id="svg-stick-right-group" transform="translate(400, 240)">
+                            <circle cx="0" cy="0" r="38" fill="#0b101b" stroke="#25354e" stroke-width="2"/>
+                            <circle id="svg-stick-right" class="gp-stick-head" cx="0" cy="0" r="26" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                            <circle id="svg-btn-11" cx="0" cy="0" r="8" fill="#334155"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Right: Analog Sticks Circular Radar & Triggers -->
+            <div class="card">
+                <div class="card-header">
+                    <span>Thumbstick Precision Radars</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">Real-time Coordinate Vector</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+                    <!-- Left Stick Radar -->
+                    <div class="stick-radar-box">
+                        <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #38bdf8;">Left Stick (LX, LY)</div>
+                        <div class="radar-canvas-wrap">
+                            <canvas id="radar-left" class="radar-canvas" width="160" height="160"></canvas>
+                        </div>
+                        <div id="telemetry-ls" class="stick-telemetry-text">
+                            X: 0.0000 | Y: 0.0000<br>
+                            Mag: 0.000 | Angle: 0.0°<br>
+                            Circularity Error: 0.0%
+                        </div>
+                    </div>
+
+                    <!-- Right Stick Radar -->
+                    <div class="stick-radar-box">
+                        <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #38bdf8;">Right Stick (RX, RY)</div>
+                        <div class="radar-canvas-wrap">
+                            <canvas id="radar-right" class="radar-canvas" width="160" height="160"></canvas>
+                        </div>
+                        <div id="telemetry-rs" class="stick-telemetry-text">
+                            X: 0.0000 | Y: 0.0000<br>
+                            Mag: 0.000 | Angle: 0.0°<br>
+                            Circularity Error: 0.0%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Triggers -->
+                <div class="trigger-wrap">
+                    <div class="trigger-label">
+                        <span>Left Trigger (LT / L2)</span>
+                        <span id="val-lt">0% (0 / 255)</span>
+                    </div>
+                    <div class="trigger-bar"><div id="fill-lt" class="trigger-fill"></div></div>
+                </div>
+                <div class="trigger-wrap">
+                    <div class="trigger-label">
+                        <span>Right Trigger (RT / R2)</span>
+                        <span id="val-rt">0% (0 / 255)</span>
+                    </div>
+                    <div class="trigger-bar"><div id="fill-rt" class="trigger-fill"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touchpad & Buttons Row -->
+        <div class="grid-2">
+            <!-- Dedicated DualShock 4 Touchpad Visualizer -->
+            <div class="card">
+                <div class="card-header">
+                    <span>DualShock 4 Capacitive Touchpad Plane (1920 × 942)</span>
+                    <span id="tp-click-badge" class="badge badge-yellow">Click: UP</span>
+                </div>
+                <div class="touchpad-box">
+                    <canvas id="touchpad-canvas" class="touchpad-canvas" width="480" height="235"></canvas>
+                    <div class="touchpad-stats">
+                        <span id="tp-stat-f0" style="color: #06b6d4;">Finger 0: Idle</span>
+                        <span id="tp-stat-f1" style="color: #ec4899;">Finger 1: Idle</span>
+                        <span id="tp-stat-hz">Rate: 0 Hz</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons Grid & Rumble Tester -->
+            <div class="card">
+                <div class="card-header">
+                    <span>Digital Buttons & Haptics</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">Direct Input State</span>
+                </div>
+
+                <div class="button-pill-grid" id="btn-pills">
+                    <!-- Populated via JS -->
+                </div>
+
+                <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                    <div style="font-size: 12px; font-weight: 600; color: #e2e8f0; margin-bottom: 8px;">Dual-Motor Haptic Vibration Test</div>
+                    <div class="rumble-slider-row">
+                        <span>Heavy (Low Freq):</span>
+                        <input type="range" id="rumble-heavy" min="0" max="255" value="255">
+                        <span id="rumble-heavy-txt" style="width: 35px;">100%</span>
+                    </div>
+                    <div class="rumble-slider-row">
+                        <span>Light (High Freq):</span>
+                        <input type="range" id="rumble-light" min="0" max="255" value="160">
+                        <span id="rumble-light-txt" style="width: 35px;">63%</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button class="btn btn-cyan" onclick="triggerRumble(500)">💥 Vibrate 500ms</button>
+                        <button class="btn btn-outline" onclick="triggerRumble(150)">⚡ Short Pulse</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="card">
+            <div class="card-header">
+                <span>Hardware & Connection Log</span>
+                <button class="btn btn-outline" onclick="document.getElementById('log-terminal').innerHTML=''">Clear Log</button>
+            </div>
+            <div id="log-terminal" class="log-terminal"></div>
+        </div>
+    </div>
+
+    <script>
+        const BTN_LABELS = [
+            'A / Cross', 'B / Circle', 'X / Square', 'Y / Triangle',
+            'L1 / LB', 'R1 / RB', 'L2 / LT', 'R2 / RT',
+            'Back', 'Start', 'L3 / LS', 'R3 / RS',
+            'D-Up', 'D-Down', 'D-Left', 'D-Right',
+            'Guide / PS', 'Touchpad'
+        ];
+
+        // Init Button Pills
+        const pillGrid = document.getElementById('btn-pills');
+        for (let i = 0; i < 18; i++) {
+            const pill = document.createElement('div');
+            pill.className = 'btn-pill';
+            pill.id = `pill-btn-${i}`;
+            pill.textContent = BTN_LABELS[i] || `B${i}`;
+            pillGrid.appendChild(pill);
+        }
+
+        // Radar canvases
+        const canvasL = document.getElementById('radar-left');
+        const ctxL = canvasL.getContext('2d');
+        const canvasR = document.getElementById('radar-right');
+        const ctxR = canvasR.getContext('2d');
+
+        // Touchpad canvas
+        const canvasTP = document.getElementById('touchpad-canvas');
+        const ctxTP = canvasTP.getContext('2d');
+
+        // Terminal Logging
+        const logBox = document.getElementById('log-terminal');
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            el.className = 'log-row';
+            el.textContent = `[${time}] ${msg}`;
+            logBox.appendChild(el);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // Window Focus State
+        const focusBadge = document.getElementById('focus-badge');
+        const focusBanner = document.getElementById('focus-banner');
+        function updateFocus() {
+            if (document.hasFocus()) {
+                focusBadge.textContent = '● Tab Focused';
+                focusBadge.className = 'badge badge-green';
+                focusBanner.style.opacity = '0.5';
+            } else {
+                focusBadge.textContent = '● Click to Focus';
+                focusBadge.className = 'badge badge-yellow';
+                focusBanner.style.opacity = '1.0';
+            }
+        }
+        window.addEventListener('focus', updateFocus);
+        window.addEventListener('blur', updateFocus);
+        window.addEventListener('click', updateFocus);
+        updateFocus();
+
+        // Gamepad Events
+        window.addEventListener('gamepadconnected', (e) => {
+            log(`🎮 Gamepad Connected: [${e.gamepad.index}] "${e.gamepad.id}" (Mapping: ${e.gamepad.mapping})`);
+            document.getElementById('pad-name-header').textContent = e.gamepad.id;
+        });
+        window.addEventListener('gamepaddisconnected', (e) => {
+            log(`❌ Gamepad Disconnected: [${e.gamepad.index}]`);
+        });
+
+        // Rumble Sliders
+        const heavySlider = document.getElementById('rumble-heavy');
+        const lightSlider = document.getElementById('rumble-light');
+        heavySlider.oninput = () => document.getElementById('rumble-heavy-txt').textContent = `${Math.round(heavySlider.value * 100 / 255)}%`;
+        lightSlider.oninput = () => document.getElementById('rumble-light-txt').textContent = `${Math.round(lightSlider.value * 100 / 255)}%`;
+
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let currentHz = 0;
+
+        // Stick circularity tracking
+        let leftStickHistory = [];
+        let rightStickHistory = [];
+
+        function renderRadar(ctx, x, y, history) {
+            const w = 160, h = 160, cx = 80, cy = 80, r = 68;
+            ctx.clearRect(0, 0, w, h);
+
+            // Outer boundary
+            ctx.strokeStyle = '#243048';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Deadzone (5%)
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.05, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Axes
+            ctx.strokeStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r);
+            ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy);
+            ctx.stroke();
+
+            // History Trail (fade out)
+            history.push({ x, y, t: performance.now() });
+            if (history.length > 30) history.shift();
+            ctx.lineWidth = 1.5;
+            for (let i = 1; i < history.length; i++) {
+                const alpha = (i / history.length) * 0.5;
+                ctx.strokeStyle = `rgba(6, 182, 212, ${alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(cx + history[i - 1].x * r, cy + history[i - 1].y * r);
+                ctx.lineTo(cx + history[i].x * r, cy + history[i].y * r);
+                ctx.stroke();
+            }
+
+            // Current thumbstick position
+            const px = cx + x * r;
+            const py = cy + y * r;
+            ctx.fillStyle = '#06b6d4';
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        // Touchpad drawing
+        let touchF0 = { active: false, x: 0, y: 0, id: 0 };
+        let touchF1 = { active: false, x: 0, y: 0, id: 0 };
+        let touchClicked = false;
+        let touchTrails = { f0: [], f1: [] };
+
+        function drawTouchpad() {
+            const w = canvasTP.width, h = canvasTP.height;
+            ctxTP.clearRect(0, 0, w, h);
+
+            // Grid background
+            ctxTP.strokeStyle = '#151d2c';
+            ctxTP.lineWidth = 1;
+            for (let x = 0; x < w; x += 40) {
+                ctxTP.beginPath(); ctxTP.moveTo(x, 0); ctxTP.lineTo(x, h); ctxTP.stroke();
+            }
+            for (let y = 0; y < h; y += 40) {
+                ctxTP.beginPath(); ctxTP.moveTo(0, y); ctxTP.lineTo(w, y); ctxTP.stroke();
+            }
+
+            // Center partition hint
+            ctxTP.strokeStyle = '#222e44';
+            ctxTP.setLineDash([4, 4]);
+            ctxTP.beginPath(); ctxTP.moveTo(w / 2, 0); ctxTP.lineTo(w / 2, h); ctxTP.stroke();
+            ctxTP.setLineDash([]);
+
+            // Draw finger trails & reticles
+            function drawFinger(f, color, trail, label) {
+                if (f.active) {
+                    const cx = (f.x / 1920) * w;
+                    const cy = (f.y / 942) * h;
+                    trail.push({ x: cx, y: cy });
+                    if (trail.length > 25) trail.shift();
+
+                    ctxTP.lineWidth = 2;
+                    for (let i = 1; i < trail.length; i++) {
+                        ctxTP.strokeStyle = color;
+                        ctxTP.globalAlpha = (i / trail.length) * 0.6;
+                        ctxTP.beginPath();
+                        ctxTP.moveTo(trail[i - 1].x, trail[i - 1].y);
+                        ctxTP.lineTo(trail[i].x, trail[i].y);
+                        ctxTP.stroke();
+                    }
+                    ctxTP.globalAlpha = 1.0;
+
+                    // Touch Reticle
+                    ctxTP.fillStyle = color;
+                    ctxTP.beginPath();
+                    ctxTP.arc(cx, cy, 8, 0, Math.PI * 2);
+                    ctxTP.fill();
+                    ctxTP.strokeStyle = '#fff';
+                    ctxTP.lineWidth = 2;
+                    ctxTP.stroke();
+
+                    // Coordinate text tag
+                    ctxTP.fillStyle = '#f8fafc';
+                    ctxTP.font = '10px Consolas';
+                    ctxTP.fillText(`${label} [${f.x}, ${f.y}]`, cx + 12, cy + 4);
+                } else {
+                    trail.length = 0;
+                }
+            }
+
+            drawFinger(touchF0, '#06b6d4', touchTrails.f0, 'F0');
+            drawFinger(touchF1, '#ec4899', touchTrails.f1, 'F1');
+
+            // Click border highlight
+            if (touchClicked) {
+                ctxTP.strokeStyle = '#10b981';
+                ctxTP.lineWidth = 4;
+                ctxTP.strokeRect(2, 2, w - 4, h - 4);
+            }
+        }
+
+        // Polling loop
+        function poll() {
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFrameTime >= 1000) {
+                currentHz = Math.round((frameCount * 1000) / (now - lastFrameTime));
+                frameCount = 0;
+                lastFrameTime = now;
+                document.getElementById('hz-badge').textContent = `${currentHz} Hz`;
+            }
+
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let activePad = null;
+            let activeCount = 0;
+            for (let i = 0; i < pads.length; i++) {
+                if (pads[i]) {
+                    activeCount++;
+                    if (!activePad) activePad = pads[i];
+                }
+            }
+
+            const padBadge = document.getElementById('pad-badge');
+            if (activeCount > 0) {
+                padBadge.textContent = `${activeCount} Connected`;
+                padBadge.className = 'badge badge-green';
+            } else {
+                padBadge.textContent = '0 Gamepads Found';
+                padBadge.className = 'badge badge-red';
+            }
+
+            if (activePad) {
+                // 1. Buttons
+                activePad.buttons.forEach((btn, idx) => {
+                    const isDown = btn.pressed || btn.value > 0.5;
+                    const pill = document.getElementById(`pill-btn-${idx}`);
+                    if (pill) {
+                        if (isDown) pill.classList.add('active');
+                        else pill.classList.remove('active');
+                    }
+                    const svgBtn = document.getElementById(`svg-btn-${idx}`);
+                    if (svgBtn) {
+                        if (isDown) svgBtn.classList.add('active');
+                        else svgBtn.classList.remove('active');
+                    }
+                });
+
+                // 2. Triggers (Axes or Buttons 6 & 7)
+                const ltVal = activePad.buttons[6] ? activePad.buttons[6].value : 0;
+                const rtVal = activePad.buttons[7] ? activePad.buttons[7].value : 0;
+                const ltPct = Math.round(ltVal * 100);
+                const rtPct = Math.round(rtVal * 100);
+                document.getElementById('fill-lt').style.width = `${ltPct}%`;
+                document.getElementById('fill-rt').style.width = `${rtPct}%`;
+                document.getElementById('val-lt').textContent = `${ltPct}% (${Math.round(ltVal * 255)} / 255)`;
+                document.getElementById('val-rt').textContent = `${rtPct}% (${Math.round(rtVal * 255)} / 255)`;
+
+                // 3. Left Stick
+                const lx = activePad.axes[0] || 0;
+                const ly = activePad.axes[1] || 0;
+                const lMag = Math.min(1.0, Math.sqrt(lx * lx + ly * ly));
+                const lAngle = (Math.atan2(ly, lx) * 180 / Math.PI + 360) % 360;
+                const lCircError = Math.max(0, (lMag - 1.0) * 100);
+                renderRadar(ctxL, lx, ly, leftStickHistory);
+                document.getElementById('telemetry-ls').innerHTML = `
+                    X: ${lx.toFixed(4)} | Y: ${ly.toFixed(4)}<br>
+                    Mag: ${lMag.toFixed(3)} | Angle: ${lAngle.toFixed(1)}°<br>
+                    Raw: [${Math.round(lx * 32767)}, ${Math.round(ly * 32767)}]
+                `;
+                // SVG Stick head offset
+                const svgStickL = document.getElementById('svg-stick-left');
+                if (svgStickL) svgStickL.setAttribute('transform', `translate(${lx * 12}, ${ly * 12})`);
+
+                // 4. Right Stick
+                const rx = activePad.axes[2] || 0;
+                const ry = activePad.axes[3] || 0;
+                const rMag = Math.min(1.0, Math.sqrt(rx * rx + ry * ry));
+                const rAngle = (Math.atan2(ry, rx) * 180 / Math.PI + 360) % 360;
+                renderRadar(ctxR, rx, ry, rightStickHistory);
+                document.getElementById('telemetry-rs').innerHTML = `
+                    X: ${rx.toFixed(4)} | Y: ${ry.toFixed(4)}<br>
+                    Mag: ${rMag.toFixed(3)} | Angle: ${rAngle.toFixed(1)}°<br>
+                    Raw: [${Math.round(rx * 32767)}, ${Math.round(ry * 32767)}]
+                `;
+                const svgStickR = document.getElementById('svg-stick-right');
+                if (svgStickR) svgStickR.setAttribute('transform', `translate(${rx * 12}, ${ry * 12})`);
+
+                // Touchpad button on SVG
+                const tpDown = activePad.buttons[17] ? activePad.buttons[17].pressed : false;
+                const svgTP = document.getElementById('svg-touchpad');
+                if (svgTP) {
+                    svgTP.setAttribute('fill', tpDown ? '#065f46' : '#1b2438');
+                }
+            }
+
+            drawTouchpad();
+            requestAnimationFrame(poll);
+        }
+
+        // Server Telemetry Polling (Every 100ms) for DualShock Touchpad & Gyro Precision
+        async function pollServerTelemetry() {
+            try {
+                const res = await fetch('/api/debug/telemetry');
+                if (res.ok) {
+                    const snap = await res.json();
+                    if (snap.Slots && snap.Slots.length > 0) {
+                        const s = snap.Slots[0];
+                        if (s.IsConnected) {
+                            touchF0.active = s.TouchF0Active;
+                            touchF0.x = s.TouchF0X;
+                            touchF0.y = s.TouchF0Y;
+                            touchF0.id = s.TouchF0Id;
+
+                            touchF1.active = s.TouchF1Active;
+                            touchF1.x = s.TouchF1X;
+                            touchF1.y = s.TouchF1Y;
+                            touchF1.id = s.TouchF1Id;
+
+                            touchClicked = s.TouchClicked;
+
+                            document.getElementById('tp-stat-f0').textContent = s.TouchF0Active ? `F0: (${s.TouchF0X}, ${s.TouchF0Y}) ID:${s.TouchF0Id}` : 'F0: Idle';
+                            document.getElementById('tp-stat-f1').textContent = s.TouchF1Active ? `F1: (${s.TouchF1X}, ${s.TouchF1Y}) ID:${s.TouchF1Id}` : 'F1: Idle';
+                            document.getElementById('tp-stat-hz').textContent = `Rate: ${s.TouchHz || s.PadHz} Hz`;
+
+                            const tpBadge = document.getElementById('tp-click-badge');
+                            tpBadge.textContent = s.TouchClicked ? 'Click: DOWN' : 'Click: UP';
+                            tpBadge.className = s.TouchClicked ? 'badge badge-green' : 'badge badge-yellow';
+
+                            // SVG Touch points
+                            const svgF0 = document.getElementById('svg-tp-f0');
+                            const svgF1 = document.getElementById('svg-tp-f1');
+                            if (svgF0) {
+                                if (s.TouchF0Active) {
+                                    svgF0.setAttribute('cx', 210 + (s.TouchF0X / 1920) * 180);
+                                    svgF0.setAttribute('cy', 65 + (s.TouchF0Y / 942) * 95);
+                                    svgF0.setAttribute('opacity', '1');
+                                } else {
+                                    svgF0.setAttribute('opacity', '0');
+                                }
+                            }
+                            if (svgF1) {
+                                if (s.TouchF1Active) {
+                                    svgF1.setAttribute('cx', 210 + (s.TouchF1X / 1920) * 180);
+                                    svgF1.setAttribute('cy', 65 + (s.TouchF1Y / 942) * 95);
+                                    svgF1.setAttribute('opacity', '1');
+                                } else {
+                                    svgF1.setAttribute('opacity', '0');
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch { }
+            setTimeout(pollServerTelemetry, 100);
+        }
+
+        // Test Controls & Mode Switching
+        async function fetchEngine() {
+            try {
+                const res = await fetch('/api/settings/controller-type');
+                const data = await res.json();
+                document.getElementById('current-engine').textContent = `${data.type.toUpperCase()} (${data.engine})`;
+            } catch {}
+        }
+
+        async function switchMode(type) {
+            log(`Switching controller driver mode to: ${type}...`);
+            try {
+                await fetch(`/api/settings/controller-type?type=${type}`, { method: 'POST' });
+                await fetchEngine();
+                log(`Successfully activated ${type} profile.`);
+            } catch (e) {
+                log(`Mode switch error: ${e}`);
+            }
+        }
+
+        async function triggerPulse() {
+            log('⚡ Emitting test pulse to virtual gamepad (Button A + Stick Deflection)...');
+            try {
+                await fetch('/api/test-pulse');
+                log('Pulse command sent to PC driver.');
+            } catch (e) {
+                log(`Pulse failed: ${e}`);
+            }
+        }
+
+        async function triggerRumble(durationMs) {
+            const large = parseInt(heavySlider.value, 10);
+            const small = parseInt(lightSlider.value, 10);
+            log(`💥 Triggering Rumble: Heavy=${large}, Light=${small}, Duration=${durationMs}ms`);
+
+            // 1. Trigger via W3C Gamepad API
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            for (let i = 0; i < pads.length; i++) {
+                if (pads[i] && pads[i].vibrationActuator) {
+                    try {
+                        pads[i].vibrationActuator.playEffect('dual-rumble', {
+                            startDelay: 0,
+                            duration: durationMs,
+                            weakMagnitude: small / 255,
+                            strongMagnitude: large / 255
+                        });
+                    } catch {}
+                }
+            }
+
+            // 2. Trigger via Server API
+            try {
+                await fetch(`/api/test-rumble?slot=0&large=${large}&small=${small}`, { method: 'POST' });
+            } catch {}
+        }
+
+        async function toggleDebugMode() {
+            try {
+                const res = await fetch('/api/debug/toggle', { method: 'POST' });
+                const data = await res.json();
+                log(`Server Live Telemetry: ${data.debugMode ? 'ENABLED (Check PC Console)' : 'DISABLED'}`);
+            } catch {}
+        }
+
+        fetchEngine();
+        pollServerTelemetry();
+        requestAnimationFrame(poll);
+        log("OmniPad Hardware Gamepad Tester initialized. Ready for inputs.");
+    </script>
+</body>
+</html>

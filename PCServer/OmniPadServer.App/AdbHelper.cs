@@ -121,38 +121,6 @@ public static class AdbHelper
             return false;
         }
     }
-
-    public static bool TrySetupUsbReverse(int inputPort = Protocol.DefaultInputPort, int webPort = Protocol.DefaultWebPort)
-    {
-        string? adb = FindAdb();
-        if (adb == null) return false;
-
-        try
-        {
-            var devicesTask = GetConnectedDevicesAsync(adb);
-            devicesTask.Wait(2000);
-            var devices = devicesTask.Result;
-
-            bool reversedAny = false;
-            foreach (var (serial, status, details) in devices)
-            {
-                if (status.Equals("device", StringComparison.OrdinalIgnoreCase))
-                {
-                    RunCommandAsync(adb, $"-s {serial} reverse tcp:{inputPort} tcp:{inputPort}").Wait(2000);
-                    RunCommandAsync(adb, $"-s {serial} reverse tcp:{webPort} tcp:{webPort}").Wait(2000);
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"[USB ADB] Reversed ports {inputPort} & {webPort} for phone {serial} ({details})");
-                    Console.ResetColor();
-                    reversedAny = true;
-                }
-            }
-            return reversedAny;
-        }
-        catch
-        {
-            return false;
-        }
-    }
 }
 
 /// <summary>
@@ -227,8 +195,9 @@ public sealed class UsbPhoneWatcher : IDisposable
                 {
                     bool revInput = await AdbHelper.RunCommandAsync(adb, $"-s {serial} reverse tcp:{_inputPort} tcp:{_inputPort}");
                     bool revWeb = await AdbHelper.RunCommandAsync(adb, $"-s {serial} reverse tcp:{_webPort} tcp:{_webPort}");
+                    bool revMic = await AdbHelper.RunCommandAsync(adb, $"-s {serial} reverse tcp:27503 tcp:27503");
 
-                    if (revInput || revWeb)
+                    if (revInput || revWeb || revMic)
                     {
                         _activeReversedSerials.Add(serial);
                         _warnedUnauthorized.Remove(serial);

@@ -22,6 +22,7 @@ public sealed class ViGEmPadBackend : IPadBackend
 {
     private readonly ViGEmClient _client;
     private readonly IXbox360Controller?[] _pads = new IXbox360Controller?[IPadBackend.MaxPads];
+    private readonly object[] _padLocks = [new(), new(), new(), new()];
     private bool _disposed;
 
     public event EventHandler<RumbleEventArgs>? RumbleReceived;
@@ -56,6 +57,15 @@ public sealed class ViGEmPadBackend : IPadBackend
         };
 
         pad.Connect();
+        // Immediately submit neutral report so Windows DirectInput/XInput/Browser sees an initialized gamepad
+        pad.SetButtonsFull(0);
+        pad.LeftTrigger = 0;
+        pad.RightTrigger = 0;
+        pad.LeftThumbX = 0;
+        pad.LeftThumbY = 0;
+        pad.RightThumbX = 0;
+        pad.RightThumbY = 0;
+        try { pad.SubmitReport(); } catch { }
         _pads[slot] = pad;
     }
 
@@ -67,16 +77,23 @@ public sealed class ViGEmPadBackend : IPadBackend
         var pad = _pads[slot];
         if (pad == null) return;
 
-        // Atomic assignment into native report buffer
-        pad.SetButtonsFull(state.Buttons);
-        pad.LeftTrigger = state.LeftTrigger;
-        pad.RightTrigger = state.RightTrigger;
-        pad.LeftThumbX = state.ThumbLX;
-        pad.LeftThumbY = state.ThumbLY;
-        pad.RightThumbX = state.ThumbRX;
-        pad.RightThumbY = state.ThumbRY;
+        lock (_padLocks[slot])
+        {
+            // Atomic assignment into native report buffer
+            pad.SetButtonsFull(state.Buttons);
+            pad.LeftTrigger = state.LeftTrigger;
+            pad.RightTrigger = state.RightTrigger;
+            pad.LeftThumbX = state.ThumbLX;
+            pad.LeftThumbY = state.ThumbLY;
+            pad.RightThumbX = state.ThumbRX;
+            pad.RightThumbY = state.ThumbRY;
 
-        pad.SubmitReport();
+            try
+            {
+                pad.SubmitReport();
+            }
+            catch { }
+        }
     }
 
     public void Disconnect(int slot)

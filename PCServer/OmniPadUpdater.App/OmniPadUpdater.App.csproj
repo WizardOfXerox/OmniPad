@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\OmniPadServer.Core\OmniPadServer.Core.csproj" />
+    <ProjectReference Include="..\OmniPadServer.ViGEm\OmniPadServer.ViGEm.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>OmniPadUpdater</AssemblyName>
+    <RootNamespace>OmniPadUpdater</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyTitle>OmniPad Updater</AssemblyTitle>
+    <AssemblyProduct>OmniPad</AssemblyProduct>
+    <Version>1.2.0</Version>
+  </PropertyGroup>
+
+</Project>

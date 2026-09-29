@@ -437,6 +437,116 @@ const LAYOUT_PRESETS = {
 
         { id: 'dbg_rs', type: 'joystick', binding: 'right', x: 0.89, y: 0.42, w: 135, h: 135 },
         { id: 'dbg_r3', type: 'button', binding: 0x0080, label: 'R3 Click (0x0080)', x: 0.89, y: 0.72, w: 100, h: 34, shape: 'pill' }
+    ],
+
+    // 21. PS5 DualSense Pro
+    ps5_dualsense: [
+        { id: 'l2', type: 'trigger', binding: 'LT', label: 'L2', x: 0.08, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+        { id: 'l1', type: 'button', binding: 0x0100, label: 'L1', x: 0.20, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'r1', type: 'button', binding: 0x0200, label: 'R1', x: 0.80, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'r2', type: 'trigger', binding: 'RT', label: 'R2', x: 0.92, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+
+        { id: 'create', type: 'button', binding: 0x0020, label: 'CREATE', x: 0.35, y: 0.13, w: 68, h: 32, shape: 'pill' },
+        { id: 'options', type: 'button', binding: 0x0010, label: 'OPTIONS', x: 0.65, y: 0.13, w: 74, h: 32, shape: 'pill' },
+
+        // Center DualSense Touchpad
+        { id: 'ps5_touchpad', type: 'touchpad', label: 'DUALSENSE TOUCHPAD', x: 0.50, y: 0.28, w: 220, h: 86 },
+        { id: 'ps_btn', type: 'button', binding: 0x0400, label: 'PS', x: 0.50, y: 0.49, w: 46, h: 46, shape: 'action' },
+        { id: 'ps_mute', type: 'button', binding: 0x0800, label: 'MUTE', x: 0.50, y: 0.63, w: 58, h: 30, shape: 'pill' },
+
+        // Left D-Pad
+        { id: 'dpad', type: 'dpad', x: 0.16, y: 0.40, w: 155, h: 155 },
+
+        // Right Playstation Action Shapes
+        { id: 'btn_tri', type: 'button', binding: 0x8000, label: '▲', btnClass: 'btn-ps-tri', x: 0.85, y: 0.26, w: 66, h: 66 },
+        { id: 'btn_sqr', type: 'button', binding: 0x4000, label: '■', btnClass: 'btn-ps-sqr', x: 0.75, y: 0.41, w: 66, h: 66 },
+        { id: 'btn_cir', type: 'button', binding: 0x2000, label: '●', btnClass: 'btn-ps-cir', x: 0.95, y: 0.41, w: 66, h: 66 },
+        { id: 'btn_crs', type: 'button', binding: 0x1000, label: '✖', btnClass: 'btn-ps-crs', x: 0.85, y: 0.56, w: 66, h: 66 },
+
+        // Symmetrical Lower Thumbsticks
+        { id: 'ls', type: 'joystick', binding: 'left', x: 0.32, y: 0.74, w: 145, h: 145 },
+        { id: 'rs', type: 'joystick', binding: 'right', x: 0.68, y: 0.74, w: 145, h: 145 }
+    ],
+
+    // 22. Nintendo Switch Joy-Cons Dual (Split Left + Right Joy-Cons with SL/SR)
+    joycon_dual: [
+        // Left Joy-Con Shoulder & Grips
+        { id: 'zl', type: 'trigger', binding: 'LT', label: 'ZL', x: 0.08, y: 0.09, w: 80, h: 44, shape: 'shoulder' },
+        { id: 'l', type: 'button', binding: 0x0100, label: 'L', x: 0.20, y: 0.09, w: 84, h: 44, shape: 'shoulder' },
+        { id: 'sl_l', type: 'button', binding: 0x0040, label: 'SL', x: 0.04, y: 0.34, w: 34, h: 64, shape: 'pill' },
+        { id: 'sr_l', type: 'button', binding: 0x0080, label: 'SR', x: 0.04, y: 0.56, w: 34, h: 64, shape: 'pill' },
+
+        // Left Joy-Con Stick & D-Pad & System
+        { id: 'minus', type: 'button', binding: 0x0020, label: '−', x: 0.34, y: 0.15, w: 42, h: 42, shape: 'action' },
+        { id: 'capture', type: 'button', binding: 0x0800, label: '⚲', x: 0.34, y: 0.74, w: 42, h: 42, shape: 'action' },
+        { id: 'ls', type: 'joystick', binding: 'left', x: 0.18, y: 0.38, w: 142, h: 142 },
+        { id: 'dpad', type: 'dpad', x: 0.22, y: 0.76, w: 140, h: 140 },
+
+        // Right Joy-Con Shoulder & Grips
+        { id: 'r', type: 'button', binding: 0x0200, label: 'R', x: 0.80, y: 0.09, w: 84, h: 44, shape: 'shoulder' },
+        { id: 'zr', type: 'trigger', binding: 'RT', label: 'ZR', x: 0.92, y: 0.09, w: 80, h: 44, shape: 'shoulder' },
+        { id: 'sl_r', type: 'button', binding: 0x0040, label: 'SL', x: 0.96, y: 0.34, w: 34, h: 64, shape: 'pill' },
+        { id: 'sr_r', type: 'button', binding: 0x0080, label: 'SR', x: 0.96, y: 0.56, w: 34, h: 64, shape: 'pill' },
+
+        // Right Joy-Con System & Buttons & Stick
+        { id: 'plus', type: 'button', binding: 0x0010, label: '+', x: 0.66, y: 0.15, w: 42, h: 42, shape: 'action' },
+        { id: 'home', type: 'button', binding: 0x0400, label: '⌂', x: 0.66, y: 0.74, w: 42, h: 42, shape: 'action' },
+        { id: 'btn_x', type: 'button', binding: 0x8000, label: 'X', btnClass: 'btn-x', x: 0.84, y: 0.24, w: 64, h: 64 },
+        { id: 'btn_y', type: 'button', binding: 0x4000, label: 'Y', btnClass: 'btn-y', x: 0.74, y: 0.38, w: 64, h: 64 },
+        { id: 'btn_a', type: 'button', binding: 0x2000, label: 'A', btnClass: 'btn-b', x: 0.94, y: 0.38, w: 64, h: 64 },
+        { id: 'btn_b', type: 'button', binding: 0x1000, label: 'B', btnClass: 'btn-a', x: 0.84, y: 0.52, w: 64, h: 64 },
+        { id: 'rs', type: 'joystick', binding: 'right', x: 0.78, y: 0.76, w: 142, h: 142 }
+    ],
+
+    // 23. Xbox Elite Series 2 (Pro Controller with 4 Rear Grip Paddles)
+    xbox_elite: [
+        { id: 'lt', type: 'trigger', binding: 'LT', label: 'LT', x: 0.08, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+        { id: 'lb', type: 'button', binding: 0x0100, label: 'LB', x: 0.20, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'rb', type: 'button', binding: 0x0200, label: 'RB', x: 0.80, y: 0.10, w: 88, h: 44, shape: 'shoulder' },
+        { id: 'rt', type: 'trigger', binding: 'RT', label: 'RT', x: 0.92, y: 0.10, w: 82, h: 44, shape: 'shoulder' },
+
+        { id: 'back', type: 'button', binding: 0x0020, label: 'VIEW', x: 0.38, y: 0.18, w: 46, h: 46 },
+        { id: 'guide', type: 'button', binding: 0x0400, label: 'XBOX', x: 0.50, y: 0.18, w: 50, h: 50 },
+        { id: 'share', type: 'button', binding: 0x0800, label: 'SHARE', x: 0.50, y: 0.34, w: 44, h: 32, shape: 'pill' },
+        { id: 'start', type: 'button', binding: 0x0010, label: 'MENU', x: 0.62, y: 0.18, w: 46, h: 46 },
+
+        // Sticks & Diamond Faceted D-Pad
+        { id: 'ls', type: 'joystick', binding: 'left', x: 0.16, y: 0.38, w: 148, h: 148 },
+        { id: 'dpad', type: 'dpad', x: 0.24, y: 0.78, w: 148, h: 148 },
+
+        // Face Buttons & Right Stick
+        { id: 'btn_y', type: 'button', binding: 0x8000, label: 'Y', btnClass: 'btn-y', x: 0.85, y: 0.24, w: 66, h: 66 },
+        { id: 'btn_x', type: 'button', binding: 0x4000, label: 'X', btnClass: 'btn-x', x: 0.75, y: 0.38, w: 66, h: 66 },
+        { id: 'btn_b', type: 'button', binding: 0x2000, label: 'B', btnClass: 'btn-b', x: 0.95, y: 0.38, w: 66, h: 66 },
+        { id: 'btn_a', type: 'button', binding: 0x1000, label: 'A', btnClass: 'btn-a', x: 0.85, y: 0.52, w: 66, h: 66 },
+        { id: 'rs', type: 'joystick', binding: 'right', x: 0.72, y: 0.78, w: 148, h: 148 },
+
+        // 4 Ergonomic Rear Grip Paddles (P1-P4)
+        { id: 'pad_p1', type: 'button', binding: 0x1000, label: 'P1 (A)', x: 0.38, y: 0.76, w: 56, h: 40, shape: 'pill' },
+        { id: 'pad_p2', type: 'button', binding: 0x2000, label: 'P2 (B)', x: 0.44, y: 0.86, w: 56, h: 40, shape: 'pill' },
+        { id: 'pad_p3', type: 'button', binding: 0x4000, label: 'P3 (X)', x: 0.56, y: 0.86, w: 56, h: 40, shape: 'pill' },
+        { id: 'pad_p4', type: 'button', binding: 0x8000, label: 'P4 (Y)', x: 0.62, y: 0.76, w: 56, h: 40, shape: 'pill' }
+    ],
+
+    // 24. Neo Geo Arcade (Authentic 4-Button Curved Layout: A, B, C, D)
+    neogeo_arcade: [
+        { id: 'btn_coin', type: 'button', binding: 0x0020, label: 'SELECT', btnClass: 'arcade-coin', x: 0.38, y: 0.15, w: 84, h: 36, shape: 'pill' },
+        { id: 'btn_home', type: 'button', binding: 0x0400, label: 'HOME', btnClass: 'arcade-home', x: 0.50, y: 0.15, w: 46, h: 46, shape: 'action' },
+        { id: 'btn_start', type: 'button', binding: 0x0010, label: 'START', btnClass: 'arcade-start', x: 0.62, y: 0.15, w: 84, h: 36, shape: 'pill' },
+
+        // Neo Geo Ball-Top Joystick
+        { id: 'arcade_stick', type: 'joystick', binding: 'arcade', x: 0.22, y: 0.58, w: 185, h: 185, btnClass: 'arcade-joystick' },
+
+        // Neo Geo Curved ABCD Buttons:
+        // A (Red, Light Punch), B (Yellow, Light Kick), C (Green, Strong Punch), D (Blue, Strong Kick)
+        { id: 'btn_a', type: 'button', binding: 0x1000, label: 'A\nLP', btnClass: 'arcade-btn arcade-btn-lp', x: 0.54, y: 0.64, w: 72, h: 72, shape: 'action' },
+        { id: 'btn_b', type: 'button', binding: 0x2000, label: 'B\nLK', btnClass: 'arcade-btn arcade-btn-mp', x: 0.66, y: 0.52, w: 72, h: 72, shape: 'action' },
+        { id: 'btn_c', type: 'button', binding: 0x4000, label: 'C\nHP', btnClass: 'arcade-btn arcade-btn-hp', x: 0.78, y: 0.43, w: 72, h: 72, shape: 'action' },
+        { id: 'btn_d', type: 'button', binding: 0x8000, label: 'D\nHK', btnClass: 'arcade-btn arcade-btn-3p', x: 0.90, y: 0.38, w: 72, h: 72, shape: 'action' },
+
+        // Optional Quick Chords (A+B Dodge, C+D Blowback)
+        { id: 'btn_ab', type: 'button', binding: 0x0100, label: 'A+B (LB)', x: 0.72, y: 0.78, w: 76, h: 44, shape: 'pill' },
+        { id: 'btn_cd', type: 'button', binding: 0x0200, label: 'C+D (RB)', x: 0.86, y: 0.72, w: 76, h: 44, shape: 'pill' }
     ]
 };
 
@@ -444,7 +554,12 @@ const LAYOUT_PRESETS = {
 LAYOUT_PRESETS.xbox360 = LAYOUT_PRESETS.xbox;
 LAYOUT_PRESETS.ps = LAYOUT_PRESETS.playstation;
 LAYOUT_PRESETS.ps4 = LAYOUT_PRESETS.playstation;
-LAYOUT_PRESETS.ps5 = LAYOUT_PRESETS.playstation;
+LAYOUT_PRESETS.ps5 = LAYOUT_PRESETS.ps5_dualsense;
+LAYOUT_PRESETS.dualsense = LAYOUT_PRESETS.ps5_dualsense;
+LAYOUT_PRESETS.joycon = LAYOUT_PRESETS.joycon_dual;
+LAYOUT_PRESETS.joycons = LAYOUT_PRESETS.joycon_dual;
+LAYOUT_PRESETS.elite = LAYOUT_PRESETS.xbox_elite;
+LAYOUT_PRESETS.neogeo = LAYOUT_PRESETS.neogeo_arcade;
 LAYOUT_PRESETS.switch = LAYOUT_PRESETS.switch_pro;
 LAYOUT_PRESETS.flight = LAYOUT_PRESETS.hotas_flight;
 LAYOUT_PRESETS.mmo = LAYOUT_PRESETS.mmo_action;

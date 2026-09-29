@@ -139,7 +139,7 @@ public sealed class DsuMotionServer : IDisposable
     private async Task BroadcastLoopAsync()
     {
         byte[] reportBuffer = new byte[ReportPacketSize];
-        var periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10)); // 100Hz standard update rate
+        using var periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10)); // 100Hz standard update rate
 
         try
         {
@@ -337,11 +337,11 @@ public sealed class DsuMotionServer : IDisposable
         output[idx++] = (byte)(pad.IsButtonPressed(Protocol.Buttons.Guide) ? 1 : 0); // PS
         output[idx++] = (byte)(pad.IsButtonPressed(Protocol.Buttons.Touchpad) || touch.Clicked ? 1 : 0); // Touchpad
 
-        // Sticks (0..255, center 128)
+        // Sticks (0..255, center 128, Y inverted for DS4/DSU standard: 0=top, 255=bottom)
         byte lx = (byte)Math.Clamp((pad.ThumbLX + 32768) >> 8, 0, 255);
-        byte ly = (byte)Math.Clamp((pad.ThumbLY + 32768) >> 8, 0, 255);
+        byte ly = (byte)Math.Clamp((32767 - pad.ThumbLY) >> 8, 0, 255);
         byte rx = (byte)Math.Clamp((pad.ThumbRX + 32768) >> 8, 0, 255);
-        byte ry = (byte)Math.Clamp((pad.ThumbRY + 32768) >> 8, 0, 255);
+        byte ry = (byte)Math.Clamp((32767 - pad.ThumbRY) >> 8, 0, 255);
         output[idx++] = lx;
         output[idx++] = ly;
         output[idx++] = rx;

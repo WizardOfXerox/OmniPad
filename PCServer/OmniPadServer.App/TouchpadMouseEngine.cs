@@ -135,12 +135,12 @@ public sealed class TouchpadMouseEngine
                 // Bottom-right corner (X > 1400, Y > 650 out of 1920x942) -> Right click
                 if (touch.Finger0.IsActive && touch.Finger0.X > 1400 && touch.Finger0.Y > 650)
                 {
-                    SendButtonEvent(MOUSEEVENTF_RIGHTDOWN);
+                    SendButtonEvent(true, true);
                     _isRightMouseDown = true;
                 }
                 else
                 {
-                    SendButtonEvent(MOUSEEVENTF_LEFTDOWN);
+                    SendButtonEvent(false, true);
                     _isLeftMouseDown = true;
                 }
             }
@@ -149,12 +149,12 @@ public sealed class TouchpadMouseEngine
         {
             if (_isLeftMouseDown)
             {
-                SendButtonEvent(MOUSEEVENTF_LEFTUP);
+                SendButtonEvent(false, false);
                 _isLeftMouseDown = false;
             }
             if (_isRightMouseDown)
             {
-                SendButtonEvent(MOUSEEVENTF_RIGHTUP);
+                SendButtonEvent(true, false);
                 _isRightMouseDown = false;
             }
         }
@@ -173,115 +173,28 @@ public sealed class TouchpadMouseEngine
 
     private static void SendMouseMove(int dx, int dy)
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        INPUT input = new()
-        {
-            type = INPUT_MOUSE,
-            mi = new MOUSEINPUT
-            {
-                dx = dx,
-                dy = dy,
-                dwFlags = MOUSEEVENTF_MOVE,
-                time = 0,
-                dwExtraInfo = IntPtr.Zero
-            }
-        };
-
-        SendInput(1, [input], Marshal.SizeOf<INPUT>());
+        WindowsInputSimulator.MouseMove((short)dx, (short)dy);
     }
 
-    private static void SendButtonEvent(uint flags)
+    private static void SendButtonEvent(bool isRight, bool isDown)
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        INPUT input = new()
-        {
-            type = INPUT_MOUSE,
-            mi = new MOUSEINPUT
-            {
-                dwFlags = flags,
-                time = 0,
-                dwExtraInfo = IntPtr.Zero
-            }
-        };
-
-        SendInput(1, [input], Marshal.SizeOf<INPUT>());
+        WindowsInputSimulator.MouseButton((byte)(isRight ? 2 : 1), isDown);
     }
 
     private static void SendLeftClick()
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        INPUT[] inputs =
-        [
-            new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = MOUSEEVENTF_LEFTDOWN } },
-            new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = MOUSEEVENTF_LEFTUP } }
-        ];
-
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        WindowsInputSimulator.MouseButton(1, true);
+        WindowsInputSimulator.MouseButton(1, false);
     }
 
     private static void SendRightClick()
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        INPUT[] inputs =
-        [
-            new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = MOUSEEVENTF_RIGHTDOWN } },
-            new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = MOUSEEVENTF_RIGHTUP } }
-        ];
-
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        WindowsInputSimulator.MouseButton(2, true);
+        WindowsInputSimulator.MouseButton(2, false);
     }
 
     private static void SendMouseWheel(int delta)
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        INPUT input = new()
-        {
-            type = INPUT_MOUSE,
-            mi = new MOUSEINPUT
-            {
-                dwFlags = MOUSEEVENTF_WHEEL,
-                mouseData = (uint)delta,
-                time = 0,
-                dwExtraInfo = IntPtr.Zero
-            }
-        };
-
-        SendInput(1, [input], Marshal.SizeOf<INPUT>());
+        WindowsInputSimulator.MouseWheel((short)delta);
     }
-
-    #region Win32 P/Invoke
-    private const uint INPUT_MOUSE = 0;
-    private const uint MOUSEEVENTF_MOVE = 0x0001;
-    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
-    private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
-    private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-    private const uint MOUSEEVENTF_WHEEL = 0x0800;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public uint type;
-        public MOUSEINPUT mi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT
-    {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint nInputs, [In] INPUT[] pInputs, int cbSize);
-    #endregion
 }

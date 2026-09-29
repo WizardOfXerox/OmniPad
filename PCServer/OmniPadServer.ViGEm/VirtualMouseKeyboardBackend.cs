@@ -13,6 +13,7 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
 {
     private bool _disposed;
     private PadState _lastState = PadState.Neutral;
+    private bool _lastTouchpadClicked;
 
 #pragma warning disable CS0067
     public event EventHandler<RumbleEventArgs>? RumbleReceived;
@@ -96,6 +97,11 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
         UpdateKey(false, true, VK_ESCAPE);
         SendMouseButton(false, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
         SendMouseButton(false, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP);
+        if (_lastTouchpadClicked)
+        {
+            _lastTouchpadClicked = false;
+            SendMouseButton(false, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+        }
     }
 
     private static void UpdateKey(bool isDown, bool wasDown, ushort vk)
@@ -104,6 +110,16 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
             SendKey(vk, false);
         else if (!isDown && wasDown)
             SendKey(vk, true);
+    }
+
+    public void SubmitTouchpad(int slot, in TouchpadState state)
+    {
+        if (_disposed || slot != 0) return;
+        if (state.Clicked != _lastTouchpadClicked)
+        {
+            _lastTouchpadClicked = state.Clicked;
+            SendMouseButton(state.Clicked, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+        }
     }
 
     #region Win32 SendInput P/Invoke
@@ -115,6 +131,7 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
     private const uint MOUSEEVENTF_LEFTUP = 0x0004;
     private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
     private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+    private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
     private const ushort VK_W = 0x57;
@@ -167,6 +184,9 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
 
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKeyW(uint uCode, uint uMapType);
+
     private static void SendMouseMove(int dx, int dy)
     {
         INPUT[] inputs = new INPUT[1];
@@ -187,10 +207,18 @@ public sealed class VirtualMouseKeyboardBackend : IPadBackend
 
     private static void SendKey(ushort vk, bool isUp)
     {
+        uint scan = MapVirtualKeyW(vk, 0); // MAPVK_VK_TO_VSC = 0
+        uint flags = isUp ? KEYEVENTF_KEYUP : 0;
+        if (vk is >= 0x21 and <= 0x28 or 0x2D or 0x2E or 0x5B or 0x5C or 0xA3 or 0xA5)
+        {
+            flags |= KEYEVENTF_EXTENDEDKEY;
+        }
+
         INPUT[] inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].u.ki.wVk = vk;
-        inputs[0].u.ki.dwFlags = isUp ? KEYEVENTF_KEYUP : 0;
+        inputs[0].u.ki.wScan = (ushort)scan;
+        inputs[0].u.ki.dwFlags = flags;
         SendInput(1, inputs, Marshal.SizeOf<INPUT>());
     }
 

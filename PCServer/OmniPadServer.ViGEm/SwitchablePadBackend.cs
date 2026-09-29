@@ -4,135 +4,103 @@ using OmniPadServer.Core;
 
 namespace OmniPadServer.ViGEm;
 
+public enum EmulationType
+{
+    Xbox360,
+    DualShock4,
+    HIDMaestro
+}
+
 /// <summary>
-/// Dynamic multiplexing backend that allows switching between Xbox 360, DualShock 4, and Keyboard/Mouse
+/// Dynamic multiplexing backend that allows switching between controller profiles
 /// at runtime on-the-fly without dropping connected client sessions.
+/// Powered by HIDOmniPadBus.
 /// </summary>
 public sealed class SwitchablePadBackend : IPadBackend
 {
-    private readonly object _lock = new();
-    private readonly bool _forceKbm;
-    private IPadBackend _currentBackend;
-    private EmulationType _currentType;
-    private readonly HashSet<int> _activeSlots = new();
+    private readonly HIDOmniPadBus _bus;
     private bool _disposed;
 
     public event EventHandler<RumbleEventArgs>? RumbleReceived;
     public event Action<EmulationType>? EmulationTypeChanged;
+    public event Action<ControllerProfilePreset, string>? ProfileChanged;
 
-    public EmulationType CurrentType
-    {
-        get { lock (_lock) return _currentType; }
-    }
+    public HIDOmniPadBus Bus => _bus;
 
-    public string CurrentEngineName => _currentType switch
+    public EmulationType CurrentType => _bus.CurrentPreset switch
     {
-        EmulationType.DualShock4 => "Virtual DualShock 4 (ViGEm)",
-        EmulationType.Xbox360 => "Virtual Xbox 360 (ViGEm)",
-        _ => "Virtual Mouse & Keyboard"
+        ControllerProfilePreset.DualShock4_WHQL => EmulationType.DualShock4,
+        ControllerProfilePreset.Xbox360_WHQL => EmulationType.Xbox360,
+        _ => EmulationType.HIDMaestro
     };
 
-    public SwitchablePadBackend(bool forceKeyboardMouse = false, EmulationType initialType = EmulationType.Xbox360)
-    {
-        _forceKbm = forceKeyboardMouse;
-        _currentType = initialType;
+    public ControllerProfilePreset CurrentPreset => _bus.CurrentPreset;
+    public string CurrentEngineName => _bus.ActiveEngineName;
+    public ControllerProfileInfo CurrentInfo => _bus.CurrentInfo;
 
-        var (backend, _) = PadBackendFactory.CreateBackend(forceKeyboardMouse, initialType);
-        _currentBackend = backend;
-        _currentBackend.RumbleReceived += OnRumbleReceived;
+    public SwitchablePadBackend(bool forceKeyboardMouse = false, ControllerProfilePreset initialPreset = ControllerProfilePreset.Xbox360_WHQL)
+    {
+        _bus = new HIDOmniPadBus(forceKeyboardMouse, initialPreset);
+        _bus.RumbleReceived += (_, e) => RumbleReceived?.Invoke(this, e);
+        _bus.ProfileChanged += (preset, engine) =>
+        {
+            ProfileChanged?.Invoke(preset, engine);
+            EmulationTypeChanged?.Invoke(CurrentType);
+        };
+    }
+
+    public SwitchablePadBackend(bool forceKeyboardMouse, EmulationType initialType)
+        : this(forceKeyboardMouse, initialType == EmulationType.DualShock4 ? ControllerProfilePreset.DualShock4_WHQL :
+                                  initialType == EmulationType.HIDMaestro ? ControllerProfilePreset.DualSense_PS5 :
+                                  ControllerProfilePreset.Xbox360_WHQL)
+    {
     }
 
     public bool SwitchEmulationType(EmulationType newType)
     {
-        lock (_lock)
+        var targetPreset = newType switch
         {
-            if (_disposed || _forceKbm || _currentType == newType)
-                return false;
+            EmulationType.DualShock4 => ControllerProfilePreset.DualShock4_WHQL,
+            EmulationType.HIDMaestro => ControllerProfilePreset.DualSense_PS5,
+            _ => ControllerProfilePreset.Xbox360_WHQL
+        };
 
-            try
-            {
-                var (newBackend, isHardware) = PadBackendFactory.CreateBackend(false, newType);
-                if (!isHardware && newBackend is VirtualMouseKeyboardBackend)
-                {
-                    // If ViGEm isn't installed, don't break current backend
-                    return false;
-                }
+        return _bus.SwitchProfile(targetPreset);
+    }
 
-                // Disconnect slots on old backend
-                foreach (int slot in _activeSlots)
-                {
-                    try { _currentBackend.Disconnect(slot); } catch { }
-                }
-
-                _currentBackend.RumbleReceived -= OnRumbleReceived;
-                try { _currentBackend.Dispose(); } catch { }
-
-                _currentBackend = newBackend;
-                _currentType = newType;
-                _currentBackend.RumbleReceived += OnRumbleReceived;
-
-                // Reconnect active slots on new backend
-                foreach (int slot in _activeSlots)
-                {
-                    try { _currentBackend.Connect(slot); } catch { }
-                }
-
-                EmulationTypeChanged?.Invoke(newType);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"[Backend] Failed to switch controller type to {newType}: {ex.Message}");
-                Console.ResetColor();
-                return false;
-            }
-        }
+    public bool SwitchProfile(ControllerProfilePreset preset)
+    {
+        return _bus.SwitchProfile(preset);
     }
 
     public void Connect(int slot)
     {
-        lock (_lock)
-        {
-            if (_disposed) return;
-            _activeSlots.Add(slot);
-            _currentBackend.Connect(slot);
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _bus.Connect(slot);
     }
 
     public void Submit(int slot, in PadState state)
     {
-        lock (_lock)
-        {
-            if (_disposed) return;
-            _currentBackend.Submit(slot, in state);
-        }
+        if (_disposed) return;
+        _bus.Submit(slot, in state);
+    }
+
+    public void SubmitTouchpad(int slot, in TouchpadState state)
+    {
+        if (_disposed) return;
+        _bus.SubmitTouchpad(slot, in state);
     }
 
     public void Disconnect(int slot)
     {
-        lock (_lock)
-        {
-            if (_disposed) return;
-            _activeSlots.Remove(slot);
-            _currentBackend.Disconnect(slot);
-        }
+        if (_disposed) return;
+        _bus.Disconnect(slot);
     }
 
     public void Dispose()
     {
-        lock (_lock)
-        {
-            if (_disposed) return;
-            _disposed = true;
-            _activeSlots.Clear();
-            _currentBackend.RumbleReceived -= OnRumbleReceived;
-            _currentBackend.Dispose();
-        }
-    }
-
-    private void OnRumbleReceived(object? sender, RumbleEventArgs e)
-    {
-        RumbleReceived?.Invoke(this, e);
+        if (_disposed) return;
+        _disposed = true;
+        _bus.Dispose();
     }
 }

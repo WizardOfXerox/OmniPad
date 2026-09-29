@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>OmniPadLegacinator</AssemblyName>
     <RootNamespace>OmniPadServer.Legacinator</RootNamespace>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

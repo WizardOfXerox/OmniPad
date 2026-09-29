@@ -33,6 +33,11 @@ public interface IPadBackend : IDisposable
     void Submit(int slot, in PadState state);
 
     /// <summary>
+    /// Submits a multi-touch touchpad packet (DS4/DualSense capacitive touch surface) if supported by the backend.
+    /// </summary>
+    void SubmitTouchpad(int slot, in TouchpadState state) { }
+
+    /// <summary>
     /// Unplugs the virtual controller at the designated slot.
     /// </summary>
     void Disconnect(int slot);

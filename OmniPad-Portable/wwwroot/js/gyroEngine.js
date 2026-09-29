@@ -144,9 +144,23 @@ class GyroEngine {
             let normY = Math.max(-1.0, Math.min(1.0, (-this.smoothY * this.sensY) / 8));
             this.touchEngine.setStick('right', normX, normY);
         } else if (this.mode === 'steer') {
-            // Left Stick steering (Roll tilt)
+            // Left Stick steering (Roll tilt) - preserve user throttle on Y axis
             let steerNorm = Math.max(-1.0, Math.min(1.0, (gamma / 35.0) * this.sensX));
-            this.touchEngine.setStick('left', steerNorm, 0);
+            let currentY = (this.touchEngine.state.thumbLY || 0) / 32767;
+            this.touchEngine.setStick('left', steerNorm, currentY);
+        }
+    }
+
+    calibrateZero() {
+        this.lastGamma = null;
+        this.lastBeta = null;
+        this.smoothX = 0;
+        this.smoothY = 0;
+        if (this.mode === 'aim') {
+            this.touchEngine.setStick('right', 0, 0);
+        } else if (this.mode === 'steer') {
+            let currentY = (this.touchEngine.state.thumbLY || 0) / 32767;
+            this.touchEngine.setStick('left', 0, currentY);
         }
     }
 

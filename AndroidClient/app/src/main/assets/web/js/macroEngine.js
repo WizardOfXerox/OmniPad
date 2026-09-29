@@ -74,7 +74,32 @@ class MacroEngine {
         if (!macro || !macro.steps || macro.steps.length === 0) return;
 
         let cancelled = false;
-        this.activeMacroCanceller = () => { cancelled = true; };
+        let currentStepMask = 0;
+        let activeTimeoutResolve = null;
+
+        this.activeMacroCanceller = () => {
+            cancelled = true;
+            if (activeTimeoutResolve) {
+                activeTimeoutResolve();
+                activeTimeoutResolve = null;
+            }
+            if (currentStepMask !== 0) {
+                this.touchEngine.setButton(currentStepMask, false);
+                currentStepMask = 0;
+            }
+        };
+
+        const sleep = (ms) => new Promise(r => {
+            if (cancelled) return r();
+            const timer = setTimeout(() => {
+                activeTimeoutResolve = null;
+                r();
+            }, ms);
+            activeTimeoutResolve = () => {
+                clearTimeout(timer);
+                r();
+            };
+        });
 
         const runOnce = async () => {
             for (const step of macro.steps) {
@@ -88,15 +113,17 @@ class MacroEngine {
                     }
                 });
 
+                currentStepMask = stepMask;
                 this.touchEngine.setButton(stepMask, true);
 
                 // Hold duration
-                await new Promise(r => setTimeout(r, step.holdMs || 25));
+                await sleep(step.holdMs || 25);
                 this.touchEngine.setButton(stepMask, false);
+                currentStepMask = 0;
 
                 // Inter-step delay
                 if (step.delayMs && step.delayMs > 0 && !cancelled) {
-                    await new Promise(r => setTimeout(r, step.delayMs));
+                    await sleep(step.delayMs);
                 }
             }
         };
@@ -104,6 +131,11 @@ class MacroEngine {
         do {
             await runOnce();
         } while (loop && !cancelled);
+
+        if (currentStepMask !== 0) {
+            this.touchEngine.setButton(currentStepMask, false);
+            currentStepMask = 0;
+        }
 
         this.activeMacroCanceller = null;
     }

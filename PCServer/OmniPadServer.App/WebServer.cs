@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -29,6 +30,33 @@ public sealed class WebServer : IAsyncDisposable
     private readonly ConcurrentDictionary<WebSocket, byte> _socketToSlot = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly AudioStreamServer _audioServer = new();
+    private readonly MicStreamServer _micServer = new();
+    private readonly ScreenStreamServer _screenServer = new();
+    private readonly ConcurrentDictionary<WebSocket, SemaphoreSlim> _sendLocks = new();
+
+    private async Task SafeSendAsync(WebSocket socket, byte[] data, WebSocketMessageType messageType = WebSocketMessageType.Binary, bool endOfMessage = true, CancellationToken ct = default)
+    {
+        if (socket.State != WebSocketState.Open) return;
+        var sem = _sendLocks.GetOrAdd(socket, _ => new SemaphoreSlim(1, 1));
+        try
+        {
+            await sem.WaitAsync(ct).ConfigureAwait(false);
+        }
+        catch { return; }
+
+        try
+        {
+            if (socket.State == WebSocketState.Open)
+            {
+                await socket.SendAsync(data, messageType, endOfMessage, ct).ConfigureAwait(false);
+            }
+        }
+        catch { }
+        finally
+        {
+            try { sem.Release(); } catch { }
+        }
+    }
 
     public WebServer(
         IPadBackend backend,
@@ -151,6 +179,30 @@ public sealed class WebServer : IAsyncDisposable
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 }
             }
+            else if (context.Request.Path == "/ws/mic")
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using var micSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    await _micServer.HandleWebSocketAsync(micSocket);
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                }
+            }
+            else if (context.Request.Path == "/ws/screen")
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using var screenSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    await _screenServer.HandleWebSocketAsync(screenSocket);
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                }
+            }
             else if (context.Request.Path == "/api/settings/controller-type")
             {
                 if (HttpMethods.IsGet(context.Request.Method))
@@ -173,14 +225,181 @@ public sealed class WebServer : IAsyncDisposable
                     bool isDs4 = string.Equals(type, "dualshock4", StringComparison.OrdinalIgnoreCase) ||
                                  string.Equals(type, "ds4", StringComparison.OrdinalIgnoreCase) ||
                                  string.Equals(type, "ps4", StringComparison.OrdinalIgnoreCase);
+                    bool isHm = string.Equals(type, "hidmaestro", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(type, "browser", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(type, "universal", StringComparison.OrdinalIgnoreCase);
+
+                    var targetType = isDs4 ? OmniPadServer.ViGEm.EmulationType.DualShock4 :
+                                     isHm ? OmniPadServer.ViGEm.EmulationType.HIDMaestro :
+                                     OmniPadServer.ViGEm.EmulationType.Xbox360;
 
                     if (_backend is OmniPadServer.ViGEm.SwitchablePadBackend switchable)
                     {
-                        switchable.SwitchEmulationType(isDs4 ? OmniPadServer.ViGEm.EmulationType.DualShock4 : OmniPadServer.ViGEm.EmulationType.Xbox360);
+                        switchable.SwitchEmulationType(targetType);
                     }
 
+                    string typeStr = isDs4 ? "dualshock4" : isHm ? "hidmaestro" : "xbox360";
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync($"{{\"success\":true,\"type\":\"{(isDs4 ? "dualshock4" : "xbox360")}\"}}");
+                    await context.Response.WriteAsync($"{{\"success\":true,\"type\":\"{typeStr}\"}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/bus/status")
+            {
+                var busStatus = OmniPadServer.ViGEm.HIDOmniPadBusManager.DetectStatus();
+                string currentPreset = _backend is OmniPadServer.ViGEm.SwitchablePadBackend s ? s.CurrentPreset.ToString() : "Xbox360_WHQL";
+                string currentEngine = _backend is OmniPadServer.ViGEm.SwitchablePadBackend sb ? sb.CurrentEngineName : "Hardware Gamepad";
+
+                var presetList = OmniPadServer.ViGEm.ControllerProfileCatalog.Profiles.Values.Select(p => new
+                {
+                    id = p.Preset.ToString(),
+                    displayName = p.DisplayName,
+                    category = p.Category,
+                    engine = p.Engine,
+                    description = p.Description,
+                    supportsTouchpad = p.SupportsTouchpad,
+                    supportsMotion = p.SupportsMotion,
+                    supportsPaddles = p.SupportsPaddles,
+                    isSimulation = p.IsSimulation
+                });
+
+                var json = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    vigemInstalled = busStatus.ViGEmInstalled,
+                    vigemRunning = busStatus.ViGEmRunning,
+                    vigemVersion = busStatus.ViGEmVersion,
+                    hidMaestroInstalled = busStatus.HIDMaestroInstalled,
+                    totalProfilesAvailable = busStatus.TotalProfilesAvailable,
+                    primaryEngine = busStatus.PrimaryEngine,
+                    statusSummary = busStatus.StatusSummary,
+                    currentPreset,
+                    currentEngine,
+                    presets = presetList
+                });
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(json);
+            }
+            else if (context.Request.Path == "/api/bus/install")
+            {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    bool ok = OmniPadServer.ViGEm.HIDOmniPadBusManager.InstallAll();
+                    var busStatus = OmniPadServer.ViGEm.HIDOmniPadBusManager.DetectStatus();
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":{ok.ToString().ToLowerInvariant()},\"primaryEngine\":\"{busStatus.PrimaryEngine}\"}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/bus/uninstall")
+            {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    bool ok = OmniPadServer.ViGEm.HIDOmniPadBusManager.UninstallAll();
+                    var busStatus = OmniPadServer.ViGEm.HIDOmniPadBusManager.DetectStatus();
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":{ok.ToString().ToLowerInvariant()},\"primaryEngine\":\"{busStatus.PrimaryEngine}\"}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/settings/controller-profile")
+            {
+                if (HttpMethods.IsGet(context.Request.Method))
+                {
+                    string currentPreset = _backend is OmniPadServer.ViGEm.SwitchablePadBackend s ? s.CurrentPreset.ToString() : "Xbox360_WHQL";
+                    string currentEngine = _backend is OmniPadServer.ViGEm.SwitchablePadBackend sb ? sb.CurrentEngineName : "Hardware Gamepad";
+                    var currentInfo = _backend is OmniPadServer.ViGEm.SwitchablePadBackend sbb ? sbb.CurrentInfo : OmniPadServer.ViGEm.ControllerProfileCatalog.Get(OmniPadServer.ViGEm.ControllerProfilePreset.Xbox360_WHQL);
+
+                    var json = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        preset = currentPreset,
+                        engine = currentEngine,
+                        info = currentInfo
+                    });
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(json);
+                }
+                else if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string? presetStr = context.Request.Query["preset"].ToString();
+                    if (string.IsNullOrWhiteSpace(presetStr) && context.Request.HasFormContentType && context.Request.Form.TryGetValue("preset", out var formPreset))
+                    {
+                        presetStr = formPreset.ToString();
+                    }
+
+                    var parsedPreset = OmniPadServer.ViGEm.ControllerProfileCatalog.Parse(presetStr);
+                    if (_backend is OmniPadServer.ViGEm.SwitchablePadBackend switchable)
+                    {
+                        switchable.SwitchProfile(parsedPreset);
+                    }
+
+                    try
+                    {
+                        string settingsFile = Path.Combine(AppContext.BaseDirectory, "controller_profile.txt");
+                        File.WriteAllText(settingsFile, parsedPreset.ToString());
+                    }
+                    catch { }
+
+                    string engine = _backend is OmniPadServer.ViGEm.SwitchablePadBackend sb ? sb.CurrentEngineName : "Hardware Gamepad";
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":true,\"preset\":\"{parsedPreset}\",\"engine\":\"{engine}\"}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/updater/status")
+            {
+                var updateInfo = await UpdateChecker.CheckForUpdatesAsync(AppContext.BaseDirectory);
+                var json = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    currentVersion = updateInfo.CurrentVersion,
+                    latestVersion = updateInfo.LatestVersion,
+                    isUpdateAvailable = updateInfo.IsUpdateAvailable,
+                    releaseTitle = updateInfo.ReleaseTitle,
+                    releaseNotes = updateInfo.ReleaseNotes
+                });
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(json);
+            }
+            else if (context.Request.Path == "/api/updater/apply")
+            {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string updaterExe = Path.Combine(AppContext.BaseDirectory, "OmniPadUpdater.exe");
+                    if (!File.Exists(updaterExe))
+                    {
+                        updaterExe = Path.Combine(AppContext.BaseDirectory, "..", "OmniPadUpdater.App", "bin", "Debug", "net8.0-windows", "OmniPadUpdater.exe");
+                    }
+
+                    if (File.Exists(updaterExe))
+                    {
+                        int currentPid = Environment.ProcessId;
+                        Process.Start(new ProcessStartInfo(updaterExe, $"--apply --pid {currentPid} --silent")
+                        {
+                            UseShellExecute = true
+                        });
+
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync("{\"success\":true,\"message\":\"OmniPadUpdater launched. Server restarting...\"}");
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync("{\"success\":false,\"message\":\"OmniPadUpdater.exe binary not found.\"}");
+                    }
                 }
                 else
                 {
@@ -236,6 +455,74 @@ public sealed class WebServer : IAsyncDisposable
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync($"{{\"profile\":\"{current}\"}}");
             }
+            else if (context.Request.Path == "/api/test-pulse")
+            {
+                // Pulse Button A / Cross and thumbstick on slot 0 for browser Gamepad API activation
+                _backend.Connect(0);
+                var pulseState = PadState.Neutral;
+                pulseState.SetButton(Protocol.Buttons.A, true);
+                pulseState.ThumbLX = 25000;
+                pulseState.ThumbLY = 20000;
+                _backend.Submit(0, pulseState);
+
+                _ = Task.Run(async () =>
+                {
+                    for (int i = 0; i < 20; i++)
+                    {
+                        await Task.Delay(100);
+                        pulseState.ThumbLX = (short)(25000 - i * 1000);
+                        _backend.Submit(0, pulseState);
+                    }
+                    _backend.Submit(0, PadState.Neutral);
+                });
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("{\"pulsed\":true}");
+            }
+            else if (context.Request.Path == "/api/debug/telemetry")
+            {
+                context.Response.ContentType = "application/json";
+                var snapshot = ServerTelemetry.GetSnapshot();
+                await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(snapshot));
+            }
+            else if (context.Request.Path == "/api/debug/toggle")
+            {
+                if (HttpMethods.IsPost(context.Request.Method))
+                {
+                    string? enableStr = context.Request.Query["enable"].ToString();
+                    if (bool.TryParse(enableStr, out bool enable))
+                    {
+                        ServerTelemetry.DebugMode = enable;
+                    }
+                    else
+                    {
+                        ServerTelemetry.DebugMode = !ServerTelemetry.DebugMode;
+                    }
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"success\":true,\"debugMode\":{ServerTelemetry.DebugMode.ToString().ToLowerInvariant()}}}");
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                }
+            }
+            else if (context.Request.Path == "/api/test-rumble")
+            {
+                int s = int.TryParse(context.Request.Query["slot"].ToString(), out int qSlot) ? qSlot : 0;
+                byte l = byte.TryParse(context.Request.Query["large"].ToString(), out byte qLarge) ? qLarge : (byte)255;
+                byte sm = byte.TryParse(context.Request.Query["small"].ToString(), out byte qSmall) ? qSmall : (byte)128;
+
+                ServerTelemetry.RecordRumble(s, l, sm);
+
+                if (_slotSockets.TryGetValue((byte)s, out var ws) && ws.State == WebSocketState.Open)
+                {
+                    byte[] rMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgRumble, (byte)s, l, sm, 0, 0];
+                    await SafeSendAsync(ws, rMsg);
+                }
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"success\":true,\"slot\":{s},\"large\":{l},\"small\":{sm}}}");
+            }
             else
             {
                 await next();
@@ -243,20 +530,23 @@ public sealed class WebServer : IAsyncDisposable
         });
 
         // 2. Static files (WebClient UI)
-        string contentPath = webRoot ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "WebClient"));
-        if (!Directory.Exists(contentPath))
+        string contentPath = webRoot ?? "";
+        if (string.IsNullOrEmpty(contentPath) || !Directory.Exists(contentPath))
         {
-            string siblingWebClient = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "WebClient"));
-            if (Directory.Exists(siblingWebClient))
-            {
-                contentPath = siblingWebClient;
-            }
+            string candidate5 = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "WebClient"));
+            string candidate4 = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "WebClient"));
+            string candidate1 = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "WebClient"));
+
+            if (Directory.Exists(candidate5)) contentPath = candidate5;
+            else if (Directory.Exists(candidate4)) contentPath = candidate4;
+            else if (Directory.Exists(candidate1)) contentPath = candidate1;
             else
             {
                 contentPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
                 Directory.CreateDirectory(contentPath);
             }
         }
+        Console.WriteLine($"[Web Server] Serving WebClient static files from: {contentPath}");
 
         var fileProvider = new PhysicalFileProvider(contentPath);
         _app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
@@ -265,6 +555,7 @@ public sealed class WebServer : IAsyncDisposable
 
     public async Task StartAsync()
     {
+        _micServer.StartTcpListener(27503);
         await _app.StartAsync();
         _ = TimeoutReaperLoopAsync();
     }
@@ -295,11 +586,7 @@ public sealed class WebServer : IAsyncDisposable
         {
             if (ws.State == WebSocketState.Open)
             {
-                try
-                {
-                    await ws.SendAsync(msg, WebSocketMessageType.Binary, true, CancellationToken.None);
-                }
-                catch { }
+                await SafeSendAsync(ws, msg);
             }
         }
     }
@@ -313,7 +600,7 @@ public sealed class WebServer : IAsyncDisposable
         {
             // Full
             byte[] fullMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, Protocol.NoPad];
-            await socket.SendAsync(fullMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
+            await SafeSendAsync(socket, fullMsg);
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server full", CancellationToken.None);
             return;
         }
@@ -331,10 +618,11 @@ public sealed class WebServer : IAsyncDisposable
         _slotSockets[currentSlot] = socket;
         _socketToSlot[socket] = currentSlot;
         _backend.Connect(currentSlot);
+        ServerTelemetry.RecordConnect(currentSlot, endPoint.ToString());
 
         // Send WELCOME packet to browser
         byte[] welcomeMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, currentSlot];
-        await socket.SendAsync(welcomeMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
+        await SafeSendAsync(socket, welcomeMsg);
 
         // Send initial active profile if available
         if (_profileWatcher != null && !string.IsNullOrEmpty(_profileWatcher.CurrentProfile))
@@ -346,7 +634,7 @@ public sealed class WebServer : IAsyncDisposable
             profMsg[2] = Protocol.MsgActiveProfile;
             profMsg[3] = (byte)profileBytes.Length;
             Buffer.BlockCopy(profileBytes, 0, profMsg, 4, profileBytes.Length);
-            try { await socket.SendAsync(profMsg, WebSocketMessageType.Binary, true, CancellationToken.None); } catch { }
+            await SafeSendAsync(socket, profMsg);
         }
 
         // Broadcast updated slot statuses to all clients
@@ -355,20 +643,18 @@ public sealed class WebServer : IAsyncDisposable
         // Subscribe to rumble for this web socket
         EventHandler<RumbleEventArgs> rumbleHandler = async (_, e) =>
         {
-            if (e.Slot == currentSlot && socket.State == WebSocketState.Open)
+            ServerTelemetry.RecordRumble(e.Slot, e.LargeMotor, e.SmallMotor);
+            byte dynamicSlot = _socketToSlot.TryGetValue(socket, out byte s) ? s : currentSlot;
+            if (e.Slot == dynamicSlot && socket.State == WebSocketState.Open)
             {
                 byte[] rumbleMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgRumble, (byte)e.Slot, e.LargeMotor, e.SmallMotor];
-                try
-                {
-                    await socket.SendAsync(rumbleMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
-                }
-                catch { }
+                await SafeSendAsync(socket, rumbleMsg);
             }
         };
 
         _backend.RumbleReceived += rumbleHandler;
 
-        byte[] buffer = new byte[256];
+        byte[] buffer = new byte[65536];
         try
         {
             while (socket.State == WebSocketState.Open)
@@ -390,6 +676,7 @@ public sealed class WebServer : IAsyncDisposable
                         {
                             _backend.Submit(slot, input.State);
                             _dsuServer?.UpdatePadState(slot, input.State);
+                            ServerTelemetry.RecordPad(slot, input.State);
                         }
                     }
                 }
@@ -398,8 +685,10 @@ public sealed class WebServer : IAsyncDisposable
                 {
                     if (MotionPacket.TryParse(buffer.AsSpan(0, result.Count), out var motionPkt))
                     {
-                        _dsuServer?.UpdateMotion(currentSlot, motionPkt.Motion);
+                        byte activeSlot = _socketToSlot.TryGetValue(socket, out byte s) ? s : currentSlot;
+                        _dsuServer?.UpdateMotion(activeSlot, motionPkt.Motion);
                         _gyroAimEngine?.ProcessMotion(motionPkt.Motion, 0.01, out _, out _, out _);
+                        ServerTelemetry.RecordMotion(activeSlot, motionPkt.Motion);
                     }
                 }
                 // 1c. Touchpad packet (13 bytes: PS4 Touchpad 1920x942 coordinates)
@@ -407,28 +696,57 @@ public sealed class WebServer : IAsyncDisposable
                 {
                     if (TouchpadPacket.TryParse(buffer.AsSpan(0, result.Count), out var touchPkt))
                     {
-                        _dsuServer?.UpdateTouchpad(currentSlot, touchPkt.State);
+                        byte activeSlot = _socketToSlot.TryGetValue(socket, out byte s) ? s : currentSlot;
+                        _backend.SubmitTouchpad(activeSlot, touchPkt.State);
+                        _dsuServer?.UpdateTouchpad(activeSlot, touchPkt.State);
                         _touchpadMouseEngine?.ProcessTouchpad(touchPkt.State);
+                        ServerTelemetry.RecordTouch(activeSlot, touchPkt.State);
                     }
                 }
-                // 1d. Set Controller Type (4 bytes: Magic, Ver, 0x12, Type: 0=Xbox, 1=DS4)
+                // 1e. Virtual Mouse Move (8 bytes: Magic, Ver, 0x30, slot, dx(i16), dy(i16))
+                else if (result.Count >= Protocol.MouseMovePacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgMouseMove)
+                {
+                    short dx = BitConverter.ToInt16(buffer, 4);
+                    short dy = BitConverter.ToInt16(buffer, 6);
+                    WindowsInputSimulator.MouseMove(dx, dy);
+                }
+                // 1f. Virtual Mouse Button (6 bytes: Magic, Ver, 0x31, slot, btnMask, isDown)
+                else if (result.Count >= Protocol.MouseButtonPacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgMouseButton)
+                {
+                    byte btnMask = buffer[4];
+                    bool isDown = buffer[5] != 0;
+                    WindowsInputSimulator.MouseButton(btnMask, isDown);
+                }
+                // 1g. Virtual Mouse Wheel (6 bytes: Magic, Ver, 0x32, slot, delta(i16))
+                else if (result.Count >= Protocol.MouseWheelPacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgMouseWheel)
+                {
+                    short delta = BitConverter.ToInt16(buffer, 4);
+                    WindowsInputSimulator.MouseWheel(delta);
+                }
+                // 1h. Virtual Gaming Keyboard Key (7 bytes: Magic, Ver, 0x33, slot, vkCode(u16), isDown)
+                else if (result.Count >= Protocol.KeyboardKeyPacketSize && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgKeyboardKey)
+                {
+                    ushort vkCode = BitConverter.ToUInt16(buffer, 4);
+                    bool isDown = buffer[6] != 0;
+                    WindowsInputSimulator.KeyboardKey(vkCode, isDown);
+                }
+                // 1d. Set Controller Type (4 bytes: Magic, Ver, 0x12, Type: 0=Xbox, 1=DS4, 2=HIDMaestro)
                 else if (result.Count >= 4 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgSetControllerType)
                 {
                     byte typeByte = buffer[3];
                     if (_backend is OmniPadServer.ViGEm.SwitchablePadBackend switchable)
                     {
-                        switchable.SwitchEmulationType(typeByte == 1 ? OmniPadServer.ViGEm.EmulationType.DualShock4 : OmniPadServer.ViGEm.EmulationType.Xbox360);
+                        var target = typeByte == 1 ? OmniPadServer.ViGEm.EmulationType.DualShock4 :
+                                     typeByte == 2 ? OmniPadServer.ViGEm.EmulationType.HIDMaestro :
+                                     OmniPadServer.ViGEm.EmulationType.Xbox360;
+                        switchable.SwitchEmulationType(target);
                     }
                 }
                 // 2. Ping packet
                 else if (result.Count >= 4 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgPing)
                 {
                     byte[] pongMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgPong, currentSlot];
-                    try
-                    {
-                        await socket.SendAsync(pongMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
-                    }
-                    catch { }
+                    await SafeSendAsync(socket, pongMsg);
                 }
                 // 3. Switch to empty slot (MsgSwitchSlot = 0x0A, targetSlot in buffer[3])
                 else if (result.Count >= 4 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgSwitchSlot)
@@ -446,7 +764,7 @@ public sealed class WebServer : IAsyncDisposable
                         currentSlot = targetSlot;
 
                         byte[] newWelcome = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, currentSlot];
-                        await socket.SendAsync(newWelcome, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        await SafeSendAsync(socket, newWelcome);
                         _ = BroadcastSlotStatusAsync();
                     }
                 }
@@ -458,7 +776,7 @@ public sealed class WebServer : IAsyncDisposable
                     {
                         // Send prompt to target socket: MsgSwapPrompt = 0x0C, requesterSlot in byte 3
                         byte[] promptMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgSwapPrompt, currentSlot];
-                        await targetSocket.SendAsync(promptMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        await SafeSendAsync(targetSocket, promptMsg);
                     }
                 }
                 // 5. Swap response (MsgSwapResponse = 0x0D, requesterSlot in buffer[3], accepted in buffer[4])
@@ -486,11 +804,11 @@ public sealed class WebServer : IAsyncDisposable
 
                                 // Send updated welcome to requester
                                 byte[] welcomeReq = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, oldTargetSlot];
-                                await requesterSocket.SendAsync(welcomeReq, WebSocketMessageType.Binary, true, CancellationToken.None);
+                                await SafeSendAsync(requesterSocket, welcomeReq);
 
                                 // Send updated welcome to target (this socket)
                                 byte[] welcomeTar = [Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, currentSlot];
-                                await socket.SendAsync(welcomeTar, WebSocketMessageType.Binary, true, CancellationToken.None);
+                                await SafeSendAsync(socket, welcomeTar);
 
                                 _ = BroadcastSlotStatusAsync();
                             }
@@ -499,11 +817,69 @@ public sealed class WebServer : IAsyncDisposable
                         {
                             // Send decline to requester: MsgSwapDeclined = 0x0E, targetSlot in byte 3
                             byte[] declinedMsg = [Protocol.MagicByte, Protocol.Version, Protocol.MsgSwapDeclined, currentSlot];
-                            await requesterSocket.SendAsync(declinedMsg, WebSocketMessageType.Binary, true, CancellationToken.None);
+                            await SafeSendAsync(requesterSocket, declinedMsg);
                         }
                     }
                 }
-                // 6. Explicit BYE message (MsgBye = 0x04) on browser unload/close
+                // 6. Share layout request (MsgShareLayoutRequest = 0x14, targetSlot in buffer[3], payloadLen in buffer[4..5])
+                else if (result.Count >= 6 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgShareLayoutRequest)
+                {
+                    byte targetSlot = buffer[3];
+                    ushort payloadLen = (ushort)(buffer[4] | (buffer[5] << 8));
+                    int totalExpected = 6 + payloadLen;
+
+                    if (result.Count >= totalExpected)
+                    {
+                        // Build prompt message: [MagicByte, Version, MsgShareLayoutPrompt, senderSlot, lenLow, lenHigh, ...jsonBytes]
+                        byte[] promptMsg = new byte[totalExpected];
+                        promptMsg[0] = Protocol.MagicByte;
+                        promptMsg[1] = Protocol.Version;
+                        promptMsg[2] = Protocol.MsgShareLayoutPrompt;
+                        promptMsg[3] = currentSlot;
+                        promptMsg[4] = buffer[4];
+                        promptMsg[5] = buffer[5];
+                        Array.Copy(buffer, 6, promptMsg, 6, payloadLen);
+
+                        if (targetSlot == 0xFF)
+                        {
+                            // Broadcast to all other connected active players
+                            foreach (var (slotId, targetSock) in _slotSockets.ToArray())
+                            {
+                                if (slotId != currentSlot && targetSock.State == WebSocketState.Open)
+                                {
+                                    await SafeSendAsync(targetSock, promptMsg);
+                                }
+                            }
+                        }
+                        else if (targetSlot != currentSlot && _slotSockets.TryGetValue(targetSlot, out var targetSocket) && targetSocket.State == WebSocketState.Open)
+                        {
+                            await SafeSendAsync(targetSocket, promptMsg);
+                        }
+                    }
+                }
+                // 7. Share layout response (MsgShareLayoutResponse = 0x16, senderSlot in buffer[3], accepted in buffer[4])
+                else if (result.Count >= 5 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgShareLayoutResponse)
+                {
+                    byte senderSlot = buffer[3];
+                    bool accepted = buffer[4] == 1;
+
+                    if (_slotSockets.TryGetValue(senderSlot, out var senderSocket) && senderSocket.State == WebSocketState.Open)
+                    {
+                        int extraBytes = result.Count - 5;
+                        byte[] respMsg = new byte[4 + extraBytes];
+                        respMsg[0] = Protocol.MagicByte;
+                        respMsg[1] = Protocol.Version;
+                        respMsg[2] = accepted ? Protocol.MsgShareLayoutAccepted : Protocol.MsgShareLayoutDeclined;
+                        respMsg[3] = currentSlot;
+                        if (extraBytes > 0)
+                        {
+                            Array.Copy(buffer, 5, respMsg, 4, extraBytes);
+                        }
+
+                        await SafeSendAsync(senderSocket, respMsg);
+                    }
+                }
+                // 8. Explicit BYE message (MsgBye = 0x04) on browser unload/close
                 else if (result.Count >= 3 && buffer[0] == Protocol.MagicByte && buffer[2] == Protocol.MsgBye)
                 {
                     break;
@@ -518,8 +894,14 @@ public sealed class WebServer : IAsyncDisposable
         {
             _backend.RumbleReceived -= rumbleHandler;
 
+            if (_sendLocks.TryRemove(socket, out var sem))
+            {
+                sem.Dispose();
+            }
+
             if (_socketToSlot.TryRemove(socket, out byte slotToFree))
             {
+                ServerTelemetry.RecordDisconnect(slotToFree);
                 if (_slotSockets.TryGetValue(slotToFree, out var ws) && ws == socket)
                 {
                     _slotSockets.TryRemove(slotToFree, out _);
@@ -557,11 +939,7 @@ public sealed class WebServer : IAsyncDisposable
         {
             if (ws.State == WebSocketState.Open)
             {
-                try
-                {
-                    await ws.SendAsync(msg, WebSocketMessageType.Binary, true, CancellationToken.None);
-                }
-                catch { }
+                await SafeSendAsync(ws, msg);
             }
         }
     }
@@ -571,6 +949,8 @@ public sealed class WebServer : IAsyncDisposable
         _cts.Cancel();
         _cts.Dispose();
         await _audioServer.DisposeAsync();
+        await _micServer.DisposeAsync();
+        await _screenServer.DisposeAsync();
         await _app.StopAsync();
         await _app.DisposeAsync();
     }

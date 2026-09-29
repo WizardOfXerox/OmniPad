@@ -1,0 +1,133 @@
+name: OmniPad CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  # =========================================================================
+  # 1. PC SERVER & UNIT TESTS (.NET 8)
+  # =========================================================================
+  build-pc-server:
+    name: Build PC Server & Run Tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet Dependencies
+        run: dotnet restore PCServer/OmniPadServer.sln
+
+      - name: Build PCServer Solution (Release)
+        run: dotnet build PCServer/OmniPadServer.sln -c Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test PCServer/OmniPadServer.Tests/OmniPadServer.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Publish Single-File Self-Contained Binaries
+        run: |
+          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          Copy-Item -Path "publish/OmniPad-Portable/OmniPadServer.App.exe" -Destination "publish/OmniPad-Portable/OmniPadServer.exe" -Force
+          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          dotnet publish PCServer/OmniPadServer.Legacinator/OmniPadServer.Legacinator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          New-Item -ItemType Directory -Path "publish/OmniPad-Portable/WebClient" -Force | Out-Null
+          New-Item -ItemType Directory -Path "publish/OmniPad-Portable/wwwroot" -Force | Out-Null
+          Copy-Item -Path "WebClient/*" -Destination "publish/OmniPad-Portable/WebClient/" -Recurse -Force
+          Copy-Item -Path "WebClient/*" -Destination "publish/OmniPad-Portable/wwwroot/" -Recurse -Force
+          if (Test-Path "version.json") { Copy-Item -Path "version.json" -Destination "publish/OmniPad-Portable/" -Force }
+
+      - name: Upload PC Server Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-Server-win-x64
+          path: publish/OmniPad-Portable/
+          if-no-files-found: error
+
+  # =========================================================================
+  # 2. ANDROID CLIENT (GRADLE / KOTLIN)
+  # =========================================================================
+  build-android-client:
+    name: Build Android Client APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync WebClient Assets
+        run: |
+          mkdir -p AndroidClient/app/src/main/assets/web
+          cp -r WebClient/* AndroidClient/app/src/main/assets/web/
+
+      - name: Grant Execute Permission to gradlew
+        run: chmod +x AndroidClient/gradlew
+
+      - name: Build Android Debug APK
+        working-directory: ./AndroidClient
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-Android-APK
+          path: AndroidClient/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  # =========================================================================
+  # 3. UNIVERSAL BUNDLE PACKAGING
+  # =========================================================================
+  package-distribution:
+    name: Package Universal Portable Release
+    needs: [build-pc-server, build-android-client]
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download PC Server Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: OmniPad-Server-win-x64
+          path: dist/OmniPad-Portable
+
+      - name: Download Android APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: OmniPad-Android-APK
+          path: dist/OmniPad-Portable/apks
+
+      - name: Rename APK to Standard Name
+        run: |
+          if (Test-Path "dist/OmniPad-Portable/apks/app-debug.apk") {
+            Move-Item -Path "dist/OmniPad-Portable/apks/app-debug.apk" -Destination "dist/OmniPad-Portable/apks/OmniPad.apk" -Force
+          }
+
+      - name: Compress Release Bundle (ZIP)
+        run: |
+          Compress-Archive -Path "dist/OmniPad-Portable/*" -DestinationPath "OmniPad-Portable.zip" -CompressionLevel Optimal
+
+      - name: Upload Complete Distribution ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-Portable-Universal
+          path: OmniPad-Portable.zip
+          if-no-files-found: error

@@ -53,13 +53,79 @@ class TouchEngine {
         this.turboTimers = new Map();
         this.holdTimers = new Map();
 
+        this.rafPending = false;
+        this.isDirty = false;
+
+        this.isEditing = false;
+
         // Keep-alive heartbeat: guarantees server connection stays active even when hands are off glass
         this.lastEmitTime = performance.now();
         setInterval(() => {
             if (performance.now() - this.lastEmitTime >= 300) {
-                this.emitState();
+                this.emitStateImmediate();
             }
         }, 300);
+    }
+
+    setEditMode(isEditing) {
+        this.isEditing = !!isEditing;
+        if (this.isEditing) {
+            this.resetAll();
+        }
+    }
+
+    isEditModeActive() {
+        return this.isEditing || (typeof document !== 'undefined' && document.body && document.body.classList.contains('editing'));
+    }
+
+    resetAll() {
+        this.state.buttons = 0;
+        this.state.leftTrigger = 0;
+        this.state.rightTrigger = 0;
+        this.state.thumbLX = 0;
+        this.state.thumbLY = 0;
+        this.state.thumbRX = 0;
+        this.state.thumbRY = 0;
+
+        for (const [id, t] of this.turboTimers.entries()) {
+            clearInterval(t.timer);
+        }
+        this.turboTimers.clear();
+
+        for (const [id, h] of this.holdTimers.entries()) {
+            clearTimeout(h.holdTimer);
+        }
+        this.holdTimers.clear();
+
+        for (const el of this.latchedButtons) {
+            el.classList.remove('active', 'latched');
+        }
+        this.latchedButtons.clear();
+
+        this.activePointers.clear();
+
+        if (typeof document !== 'undefined') {
+            document.querySelectorAll('.control-elem.active, .control-elem.clicked, .control-elem.touch-active, .dpad-btn.active, .dpad-abxy-btn.active, .tp-quad-up.active, .tp-quad-down.active, .tp-quad-left.active, .tp-quad-right.active, .tp-abxy-y.active, .tp-abxy-b.active, .tp-abxy-a.active, .tp-abxy-x.active')
+                .forEach(el => el.classList.remove('active', 'clicked', 'touch-active', 'latched'));
+
+            document.querySelectorAll('.joystick-knob').forEach(knob => {
+                knob.style.transform = 'translate(-50%, -50%)';
+            });
+
+            document.querySelectorAll('.trigger-fill, .pedal-fill').forEach(fill => {
+                fill.style.height = '0%';
+            });
+        }
+
+        this.emitStateImmediate();
+
+        if (this.onTouchpadChanged) {
+            this.onTouchpadChanged({
+                clicked: false,
+                finger0: { isActive: false, id: 0, x: 0, y: 0 },
+                finger1: { isActive: false, id: 1, x: 0, y: 0 }
+            });
+        }
     }
 
     triggerHaptic(duration = 12) {
@@ -77,14 +143,14 @@ class TouchEngine {
         } else {
             this.state.buttons &= ~buttonMask;
         }
-        this.emitState();
+        this.emitStateImmediate();
     }
 
     setTrigger(triggerName, value) {
         const clamped = Math.max(0, Math.min(255, Math.round(value)));
         if (triggerName === 'LT') this.state.leftTrigger = clamped;
         if (triggerName === 'RT') this.state.rightTrigger = clamped;
-        this.emitState();
+        this.emitStateImmediate();
     }
 
     setStick(stickName, normX, normY) {
@@ -119,22 +185,44 @@ class TouchEngine {
             this.state.thumbRY = intY;
         }
 
-        this.emitState();
+        this.requestFrameEmit();
     }
 
-    emitState() {
+    emitStateImmediate() {
+        this.isDirty = false;
         this.lastEmitTime = performance.now();
         if (this.onStateChanged) {
             this.onStateChanged(this.state);
         }
     }
 
+    requestFrameEmit() {
+        this.isDirty = true;
+        if (!this.rafPending) {
+            this.rafPending = true;
+            requestAnimationFrame(() => {
+                this.rafPending = false;
+                if (this.isDirty) {
+                    this.emitStateImmediate();
+                }
+            });
+        }
+    }
+
+    emitState() {
+        this.emitStateImmediate();
+    }
+
     executeButtonAction(binding, isDown) {
         if (typeof binding === 'number') {
             this.setButton(binding, isDown);
         } else if (typeof binding === 'string') {
-            if (binding === 'LT' || binding === 'RT') {
-                this.setTrigger(binding, isDown ? 255 : 0);
+            if (binding === 'LT' || binding === 'RT' || binding === 'trigger_lt' || binding === 'trigger_rt') {
+                const trig = (binding === 'LT' || binding === 'trigger_lt') ? 'LT' : 'RT';
+                this.setTrigger(trig, isDown ? 255 : 0);
+            } else if (binding.startsWith('paddle_p')) {
+                const paddleMap = { 'paddle_p1': 0x1000, 'paddle_p2': 0x2000, 'paddle_p3': 0x4000, 'paddle_p4': 0x8000 };
+                if (paddleMap[binding]) this.setButton(paddleMap[binding], isDown);
             } else if (binding.indexOf('fn_') === 0) {
                 if (this.onSpecialAction) {
                     this.onSpecialAction(binding, isDown);
@@ -158,6 +246,7 @@ class TouchEngine {
         itemData = itemData || {};
 
         el.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { el.setPointerCapture(e.pointerId); } catch (_) {}
             this.triggerHaptic(14);
@@ -235,6 +324,7 @@ class TouchEngine {
         });
 
         el.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (!this.activePointers.has(e.pointerId)) return;
             const data = this.activePointers.get(e.pointerId);
             if (data.type === 'joystick') {
@@ -310,7 +400,13 @@ class TouchEngine {
         let knobY = Math.sin(angle) * clampedDist;
 
         if (data.knob) {
-            data.knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+            const container = document.getElementById('gamepad-container');
+            const dynScale = container ? (parseFloat(getComputedStyle(container).getPropertyValue('--dyn-scale')) || 1.0) : 1.0;
+            const elemScale = parseFloat(data.el.style.getPropertyValue('--elem-scale')) || 1.0;
+            const totalScale = dynScale * elemScale;
+            const renderX = totalScale > 0 ? (knobX / totalScale) : knobX;
+            const renderY = totalScale > 0 ? (knobY / totalScale) : knobY;
+            data.knob.style.transform = `translate(calc(-50% + ${renderX.toFixed(1)}px), calc(-50% + ${renderY.toFixed(1)}px))`;
         }
 
         let normX = knobX / maxRadius;
@@ -321,25 +417,30 @@ class TouchEngine {
     // Unified Tactile D-Pad with wide cardinal zones and deliberate corner diagonals
     bindDpadElement(containerEl) {
         let activeMask = 0;
+        let centerX = 0;
+        let centerY = 0;
+        let maxRadius = 0;
+        let deadzone = 24;
+
+        const cacheBounds = () => {
+            const rect = containerEl.getBoundingClientRect();
+            centerX = rect.left + rect.width / 2;
+            centerY = rect.top + rect.height / 2;
+            maxRadius = Math.max(rect.width, rect.height) / 2;
+            const customGap = containerEl.style.getPropertyValue('--dpad-gap');
+            if (customGap) {
+                deadzone = Math.max(12, parseInt(customGap) * 1.5);
+            } else {
+                deadzone = 24;
+            }
+        };
 
         const updateDpad = (e) => {
-            const rect = containerEl.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
             const dx = e.clientX - centerX;
             const dy = e.clientY - centerY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             let newMask = 0;
-            // Adapt inner deadzone dynamically to dpad spacing if customized
-            let deadzone = 24;
-            const customGap = containerEl.style.getPropertyValue('--dpad-gap');
-            if (customGap) {
-                deadzone = Math.max(12, parseInt(customGap) * 1.5);
-            }
-
-            const maxRadius = Math.max(rect.width, rect.height) / 2;
             const isOuterSide = dist > (deadzone + (maxRadius - deadzone) * 0.35);
 
             if (dist > deadzone) {
@@ -374,7 +475,7 @@ class TouchEngine {
             if (newMask !== activeMask) {
                 this.state.buttons = (this.state.buttons & ~0x000F) | newMask;
                 activeMask = newMask;
-                this.emitState();
+                this.emitStateImmediate();
 
                 // Update visual glowing highlights on active wings
                 const elUp = containerEl.querySelector('.dpad-up');
@@ -396,7 +497,7 @@ class TouchEngine {
             if (activeMask !== 0) {
                 this.state.buttons &= ~0x000F;
                 activeMask = 0;
-                this.emitState();
+                this.emitStateImmediate();
 
                 const elUp = containerEl.querySelector('.dpad-up');
                 if (elUp) elUp.classList.remove('active');
@@ -410,12 +511,15 @@ class TouchEngine {
         };
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
+            cacheBounds();
             updateDpad(e);
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (e.buttons > 0 || e.pressure > 0) {
                 updateDpad(e);
             }
@@ -429,24 +533,30 @@ class TouchEngine {
     // Touching direct cardinal zones fires single buttons; touching outer circle/sides fires dual-button chords (A+B, X+Y, Y+B, A+X)
     bindDpadAbxyElement(containerEl) {
         let activeMask = 0;
+        let centerX = 0;
+        let centerY = 0;
+        let maxRadius = 0;
+        let deadzone = 24;
+
+        const cacheBounds = () => {
+            const rect = containerEl.getBoundingClientRect();
+            centerX = rect.left + rect.width / 2;
+            centerY = rect.top + rect.height / 2;
+            maxRadius = Math.max(rect.width, rect.height) / 2;
+            const customGap = containerEl.style.getPropertyValue('--dpad-gap');
+            if (customGap) {
+                deadzone = Math.max(12, parseInt(customGap) * 1.5);
+            } else {
+                deadzone = 24;
+            }
+        };
 
         const updateDpadAbxy = (e) => {
-            const rect = containerEl.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
             const dx = e.clientX - centerX;
             const dy = e.clientY - centerY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             let newMask = 0;
-            let deadzone = 24;
-            const customGap = containerEl.style.getPropertyValue('--dpad-gap');
-            if (customGap) {
-                deadzone = Math.max(12, parseInt(customGap) * 1.5);
-            }
-
-            const maxRadius = Math.max(rect.width, rect.height) / 2;
             const isOuterSide = dist > (deadzone + (maxRadius - deadzone) * 0.35);
 
             if (dist > deadzone) {
@@ -482,7 +592,7 @@ class TouchEngine {
                 const abxyClear = ~(this.BUTTONS.A | this.BUTTONS.B | this.BUTTONS.X | this.BUTTONS.Y);
                 this.state.buttons = (this.state.buttons & abxyClear) | newMask;
                 activeMask = newMask;
-                this.emitState();
+                this.emitStateImmediate();
 
                 // Update visual glowing highlights on active wings
                 const elY = containerEl.querySelector('.dpad-abxy-y');
@@ -505,7 +615,7 @@ class TouchEngine {
                 const abxyClear = ~(this.BUTTONS.A | this.BUTTONS.B | this.BUTTONS.X | this.BUTTONS.Y);
                 this.state.buttons &= abxyClear;
                 activeMask = 0;
-                this.emitState();
+                this.emitStateImmediate();
 
                 const elY = containerEl.querySelector('.dpad-abxy-y');
                 if (elY) elY.classList.remove('active');
@@ -519,12 +629,15 @@ class TouchEngine {
         };
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
+            cacheBounds();
             updateDpadAbxy(e);
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (e.buttons > 0 || e.pressure > 0) {
                 updateDpadAbxy(e);
             }
@@ -539,6 +652,7 @@ class TouchEngine {
         const activeTouches = new Map();
         let isTouchpadClicked = false;
         let holdTimer = null;
+        let containerRect = null;
 
         const emitTouchpadState = () => {
             const touchList = Array.from(activeTouches.values());
@@ -569,12 +683,13 @@ class TouchEngine {
         };
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
 
-            const rect = containerEl.getBoundingClientRect();
-            const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            containerRect = containerEl.getBoundingClientRect();
+            const normX = Math.max(0, Math.min(1, (e.clientX - containerRect.left) / containerRect.width));
+            const normY = Math.max(0, Math.min(1, (e.clientY - containerRect.top) / containerRect.height));
             const tpX = Math.round(normX * 1920);
             const tpY = Math.round(normY * 942);
 
@@ -610,10 +725,11 @@ class TouchEngine {
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (!activeTouches.has(e.pointerId)) return;
-            const rect = containerEl.getBoundingClientRect();
-            const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            if (!containerRect) containerRect = containerEl.getBoundingClientRect();
+            const normX = Math.max(0, Math.min(1, (e.clientX - containerRect.left) / containerRect.width));
+            const normY = Math.max(0, Math.min(1, (e.clientY - containerRect.top) / containerRect.height));
             const tpX = Math.round(normX * 1920);
             const tpY = Math.round(normY * 942);
 
@@ -663,6 +779,9 @@ class TouchEngine {
     // Steam-Controller Style Touchpad as Directional Pad (4-way / 8-way Touch Surface)
     bindDpadTouchpad(containerEl) {
         let activeMask = 0;
+        let cx = 0;
+        let cy = 0;
+        let radius = 0;
         const quads = {
             up: containerEl.querySelector('.tp-quad-up'),
             down: containerEl.querySelector('.tp-quad-down'),
@@ -670,14 +789,17 @@ class TouchEngine {
             right: containerEl.querySelector('.tp-quad-right')
         };
 
-        const updateTouch = (e) => {
+        const cacheBounds = () => {
             const rect = containerEl.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
+            cx = rect.left + rect.width / 2;
+            cy = rect.top + rect.height / 2;
+            radius = rect.width / 2;
+        };
+
+        const updateTouch = (e) => {
             const dx = e.clientX - cx;
             const dy = e.clientY - cy;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const radius = rect.width / 2;
 
             let newMask = 0;
             // 15% inner neutral deadzone
@@ -703,7 +825,7 @@ class TouchEngine {
             if (newMask !== activeMask) {
                 this.state.buttons = (this.state.buttons & ~0x000F) | newMask;
                 activeMask = newMask;
-                this.emitState();
+                this.emitStateImmediate();
                 this.triggerHaptic(8);
 
                 // Update visual quadrant highlights
@@ -715,13 +837,16 @@ class TouchEngine {
         };
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
+            cacheBounds();
             containerEl.classList.add('touch-active');
             updateTouch(e);
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (containerEl.classList.contains('touch-active')) {
                 updateTouch(e);
             }
@@ -731,7 +856,7 @@ class TouchEngine {
             containerEl.classList.remove('touch-active');
             this.state.buttons &= ~0x000F;
             activeMask = 0;
-            this.emitState();
+            this.emitStateImmediate();
             if (quads.up) quads.up.classList.remove('active');
             if (quads.down) quads.down.classList.remove('active');
             if (quads.left) quads.left.classList.remove('active');
@@ -745,6 +870,9 @@ class TouchEngine {
     // Steam-Controller Style Touchpad as Face Buttons Diamond (North=Y, East=B, South=A, West=X)
     bindAbxyTouchpad(containerEl) {
         let activeMask = 0;
+        let cx = 0;
+        let cy = 0;
+        let radius = 0;
         const quads = {
             y: containerEl.querySelector('.tp-abxy-y'),
             b: containerEl.querySelector('.tp-abxy-b'),
@@ -752,14 +880,17 @@ class TouchEngine {
             x: containerEl.querySelector('.tp-abxy-x')
         };
 
-        const updateTouch = (e) => {
+        const cacheBounds = () => {
             const rect = containerEl.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
+            cx = rect.left + rect.width / 2;
+            cy = rect.top + rect.height / 2;
+            radius = rect.width / 2;
+        };
+
+        const updateTouch = (e) => {
             const dx = e.clientX - cx;
             const dy = e.clientY - cy;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const radius = rect.width / 2;
 
             let newMask = 0;
             if (dist > radius * 0.15) {
@@ -778,7 +909,7 @@ class TouchEngine {
             if (newMask !== activeMask) {
                 this.state.buttons = (this.state.buttons & ~0xF000) | newMask;
                 activeMask = newMask;
-                this.emitState();
+                this.emitStateImmediate();
                 this.triggerHaptic(10);
 
                 if (quads.y) quads.y.classList.toggle('active', (newMask & this.BUTTONS.Y) !== 0);
@@ -789,13 +920,16 @@ class TouchEngine {
         };
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
+            cacheBounds();
             containerEl.classList.add('touch-active');
             updateTouch(e);
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (containerEl.classList.contains('touch-active')) {
                 updateTouch(e);
             }
@@ -805,7 +939,7 @@ class TouchEngine {
             containerEl.classList.remove('touch-active');
             this.state.buttons &= ~0xF000;
             activeMask = 0;
-            this.emitState();
+            this.emitStateImmediate();
             if (quads.y) quads.y.classList.remove('active');
             if (quads.b) quads.b.classList.remove('active');
             if (quads.a) quads.a.classList.remove('active');
@@ -828,6 +962,7 @@ class TouchEngine {
         const indicator = containerEl.querySelector('.scroll-knob') || containerEl.querySelector('.scroll-indicator');
 
         containerEl.addEventListener('pointerdown', (e) => {
+            if (this.isEditModeActive()) return;
             e.preventDefault();
             try { containerEl.setPointerCapture(e.pointerId); } catch (_) {}
             isTouching = true;
@@ -839,6 +974,7 @@ class TouchEngine {
         });
 
         containerEl.addEventListener('pointermove', (e) => {
+            if (this.isEditModeActive()) return;
             if (!isTouching) return;
             const dy = e.clientY - lastY;
             lastY = e.clientY;

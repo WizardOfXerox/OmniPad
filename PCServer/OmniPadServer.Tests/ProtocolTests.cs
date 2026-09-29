@@ -141,4 +141,22 @@ public class ProtocolTests
         Assert.Equal(255, parsed.LargeMotor);
         Assert.Equal(128, parsed.SmallMotor);
     }
+
+    [Fact]
+    public void DiscoveryResponse_RoundTrip_Works()
+    {
+        byte[] bytes = DiscoveryResponse.Encode(27502, "DESKTOP-GAMING");
+        Assert.True(DiscoveryResponse.TryParse(bytes, out var parsed));
+        Assert.Equal(27502, parsed.WebPort);
+        Assert.Equal("DESKTOP-GAMING", parsed.Hostname);
+    }
+
+    [Fact]
+    public void DiscoveryResponse_LegacyFourBytePacket_ParsesGracefully()
+    {
+        byte[] legacyBytes = new byte[] { Protocol.MagicByte, Protocol.Version, Protocol.MsgWelcome, Protocol.NoPad };
+        Assert.True(DiscoveryResponse.TryParse(legacyBytes, out var parsed));
+        Assert.Equal(Protocol.DefaultWebPort, parsed.WebPort);
+        Assert.Equal(string.Empty, parsed.Hostname);
+    }
 }

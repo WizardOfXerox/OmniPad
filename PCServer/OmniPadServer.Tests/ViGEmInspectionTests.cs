@@ -9,12 +9,32 @@ namespace OmniPadServer.Tests;
 public class ViGEmDualShock4Tests
 {
     [Fact]
-    public void InspectMethods()
+    public void TestSubmitRawReport()
     {
-        foreach (var m in typeof(IDualShock4Controller).GetMethods())
+        try
         {
-            var pList = string.Join(", ", Array.ConvertAll(m.GetParameters(), p => $"{p.ParameterType.Name} {p.Name}"));
-            Console.WriteLine($"{m.ReturnType.Name} {m.Name}({pList})");
+            using var client = new Nefarius.ViGEm.Client.ViGEmClient();
+            var pad = client.CreateDualShock4Controller();
+            pad.AutoSubmitReport = false;
+            pad.Connect();
+            try
+            {
+                byte[] report = new byte[63];
+                report[0] = 128;
+                report[1] = 128;
+                report[2] = 128;
+                report[3] = 128;
+                report[4] = 8; // Neutral D-pad
+                pad.SubmitRawReport(report);
+            }
+            finally
+            {
+                pad.Disconnect();
+            }
+        }
+        catch (Nefarius.ViGEm.Client.Exceptions.VigemBusNotFoundException)
+        {
+            // ViGEmBus kernel driver not installed on host machine; test safely completes
         }
     }
 }

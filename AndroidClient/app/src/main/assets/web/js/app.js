@@ -30,6 +30,9 @@ class OmniPadApp {
         this.gyro = new GyroEngine(this.touch, this.network);
         this.macros = new MacroEngine(this.touch);
         this.customizer = new LayoutCustomizer(this);
+        this.mouseKeyboard = new MouseKeyboardEngine(this.network);
+        this.mic = new MicEngine(this.network);
+        this.screenStream = new ScreenStreamEngine(this.network);
 
         // Network Callbacks
         this.network.onStatusChange = (text, connected) => {
@@ -62,11 +65,23 @@ class OmniPadApp {
         this.network.onSlotStatus = (statuses) => {
             this.slotStatuses = statuses;
             this.renderPlayerSlotsList();
+            const shareModal = document.getElementById('modal-share-layout-target');
+            if (shareModal && !shareModal.classList.contains('hidden')) {
+                this.renderShareLayoutTargetsList();
+            }
         };
 
         this.network.onSlotChanged = (newSlot) => {
             this.showToast(`Controller Assigned: Player ${newSlot + 1}`);
+            const badgeText = document.getElementById('slot-badge-text');
+            if (badgeText) badgeText.textContent = `P${newSlot + 1}`;
+            const topbarSlot = document.getElementById('topbar-slot-text');
+            if (topbarSlot) topbarSlot.textContent = `P${newSlot + 1}`;
             this.renderPlayerSlotsList();
+            const shareModal = document.getElementById('modal-share-layout-target');
+            if (shareModal && !shareModal.classList.contains('hidden')) {
+                this.renderShareLayoutTargetsList();
+            }
             if (this.touch.hapticsEnabled) {
                 try { navigator.vibrate([40, 60, 40]); } catch (e) { }
             }
@@ -80,11 +95,51 @@ class OmniPadApp {
             this.showToast(`Player ${targetSlot + 1} declined the swap request.`);
         };
 
+        this.network.onShareLayoutPrompt = (fromSlot, layoutData) => {
+            this.showLayoutPromptModal(fromSlot, layoutData);
+        };
+
+        this.network.onShareLayoutDeclined = (targetSlot, layoutName) => {
+            const nameStr = layoutName ? ` ("${layoutName}")` : '';
+            this.showToast(`Player ${targetSlot + 1} declined layout share${nameStr}.`);
+        };
+
+        this.network.onShareLayoutAccepted = (targetSlot, layoutName) => {
+            const nameStr = layoutName ? ` "${layoutName}"` : '';
+            this.showToast(`Player ${targetSlot + 1} accepted layout${nameStr}!`);
+        };
+
         this.network.onTransportChange = (transport, host) => {
-            if (transport === 'wired') {
-                this.showToast('⚡ Connected via Ultra-Low Latency USB');
+            const connIcon = document.getElementById('topbar-conn-icon');
+            const connText = document.getElementById('topbar-conn-text');
+            const connSel = document.getElementById('setting-connectivity-mode');
+            const icons = window.OMNIPAD_SVG_ICONS || (window.omniPadSelect ? window.omniPadSelect.icons : {});
+
+            if (transport === 'wired' || transport === 'usb') {
+                if (connIcon && icons && icons.usb) connIcon.innerHTML = icons.usb;
+                if (connText) connText.textContent = 'USB';
+                if (connSel && this.network.configuredMode !== 'auto') connSel.value = 'usb';
+                this.showToast('Connected via Ultra-Low Latency USB');
             } else if (transport === 'wifi') {
-                this.showToast(`⚡ Switched to WiFi LAN (${host})`);
+                if (connIcon && icons && icons.wifi) connIcon.innerHTML = icons.wifi;
+                if (connText) connText.textContent = 'WiFi';
+                if (connSel && this.network.configuredMode !== 'auto') connSel.value = 'wifi';
+                this.showToast(`Switched to WiFi LAN (${host || 'Server'})`);
+            } else if (transport === 'bluetooth') {
+                if (connIcon && icons && icons.bluetooth) connIcon.innerHTML = icons.bluetooth;
+                if (connText) connText.textContent = 'BT';
+                if (connSel) connSel.value = 'bluetooth';
+                this.showToast('Bluetooth HID Gamepad Mode Active');
+            } else if (transport === 'offline') {
+                if (connIcon && icons && icons.offline) connIcon.innerHTML = icons.offline;
+                if (connText) connText.textContent = 'Offline';
+                if (connSel) connSel.value = 'offline';
+                this.showToast('Running in Offline Standalone Mode');
+            }
+
+            if (window.omniPadSelect && connSel) {
+                const info = window.omniPadSelect.enhancedSelects.get(connSel);
+                if (info) info.updateTrigger();
             }
         };
 
@@ -94,7 +149,8 @@ class OmniPadApp {
                 'xbox360': 'xbox',
                 'ps': 'playstation',
                 'ps4': 'playstation',
-                'ps5': 'playstation',
+                'ps5': 'ps5_dualsense',
+                'dualsense': 'ps5_dualsense',
                 'switch': 'switch_pro',
                 'flight': 'hotas_flight',
                 'mmo': 'mmo_action',
@@ -142,7 +198,7 @@ class OmniPadApp {
 
         // Re-request wake lock on user touch gesture if previously denied/released
         window.addEventListener('pointerdown', () => {
-            if (!this.wakeLock) {
+            if (!this.wakeLock || this.wakeLock.released) {
                 this.requestWakeLock();
             }
         }, { passive: true });
@@ -174,7 +230,9 @@ class OmniPadApp {
     async requestWakeLock() {
         if ('wakeLock' in navigator) {
             try {
-                this.wakeLock = await navigator.wakeLock.request('screen');
+                if (!this.wakeLock || this.wakeLock.released) {
+                    this.wakeLock = await navigator.wakeLock.request('screen');
+                }
             } catch (e) { }
         }
     }
@@ -211,7 +269,6 @@ class OmniPadApp {
 
         if (statusPill) {
             statusPill.addEventListener('pointerdown', (e) => e.stopPropagation());
-            statusPill.addEventListener('pointerup', toggleTopBar);
             statusPill.addEventListener('click', toggleTopBar);
         }
         if (btnHideTopbar) btnHideTopbar.addEventListener('click', hideTopBar);
@@ -237,6 +294,52 @@ class OmniPadApp {
             this.openPlayerSwitchModal();
         });
 
+        on('btn-topbar-connectivity', 'click', (e) => {
+            e.stopPropagation();
+            hideTopBar();
+            const connSel = document.getElementById('setting-connectivity-mode');
+            if (window.omniPadSelect && connSel) {
+                const icons = window.OMNIPAD_SVG_ICONS || (window.omniPadSelect ? window.omniPadSelect.icons : {});
+                window.omniPadSelect.open(connSel, 'Select Connection Mode', icons ? icons.bolt : null);
+            }
+        });
+
+        on('btn-topbar-share', 'click', (e) => {
+            e.stopPropagation();
+            hideTopBar();
+            this.openShareLayoutModal();
+        });
+
+        const connModeSel = document.getElementById('setting-connectivity-mode');
+        if (connModeSel) {
+            connModeSel.addEventListener('change', (e) => {
+                this.network.setConnectivityMode(e.target.value);
+            });
+        }
+
+        on('btn-switch-server', 'click', (e) => {
+            e.stopPropagation();
+            if (window.OmniPadNative && typeof window.OmniPadNative.scanAndSelectServer === 'function') {
+                window.OmniPadNative.scanAndSelectServer();
+            } else {
+                const currentHost = window.location.hostname || '192.168.1.';
+                const targetHost = prompt('Enter OmniPad PC Server IP address or hostname to connect to:', currentHost);
+                if (targetHost && targetHost.trim()) {
+                    const port = window.location.port || '27502';
+                    window.location.href = `http://${targetHost.trim()}:${port}/`;
+                }
+            }
+        });
+
+        on('btn-scan-qr', 'click', (e) => {
+            e.stopPropagation();
+            if (window.OmniPadNative && typeof window.OmniPadNative.scanQrCode === 'function') {
+                window.OmniPadNative.scanQrCode();
+            } else {
+                alert('QR Code camera scanning is supported directly inside the OmniPad Android App.');
+            }
+        });
+
         // Close modal buttons and backdrop clicks
         on('btn-close-player-switch', 'click', (e) => {
             e.stopPropagation();
@@ -246,6 +349,141 @@ class OmniPadApp {
             e.stopPropagation();
             this.closePlayerSwitchModal();
         });
+
+        on('btn-close-share-layout-target', 'click', (e) => {
+            e.stopPropagation();
+            this.closeShareLayoutModal();
+        });
+        on('backdrop-share-layout-target', 'click', (e) => {
+            e.stopPropagation();
+            this.closeShareLayoutModal();
+        });
+
+        // Smooth horizontal touch-scroll for top-bar hud-left
+        const hudLeft = document.querySelector('.hud-left');
+        if (hudLeft) {
+            let hStartX = 0;
+            let hStartScroll = 0;
+            let isDragging = false;
+
+            hudLeft.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                isDragging = true;
+                hStartX = e.touches[0].clientX;
+                hStartScroll = hudLeft.scrollLeft;
+            }, { passive: true });
+
+            hudLeft.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - hStartX;
+                hudLeft.scrollLeft = hStartScroll - dx;
+            }, { passive: true });
+
+            const endHudTouch = () => { isDragging = false; };
+            hudLeft.addEventListener('touchend', endHudTouch, { passive: true });
+            hudLeft.addEventListener('touchcancel', endHudTouch, { passive: true });
+        }
+
+        // Bluetooth HID Direct Gamepad Mode UI Listeners & Handlers
+        const btnToggleBt = document.getElementById('btn-toggle-bt');
+        const btnBtEnable = document.getElementById('btn-bt-enable');
+        const btnBtDisable = document.getElementById('btn-bt-disable');
+        const btStatusBadge = document.getElementById('bt-status-badge');
+        const btHostInfo = document.getElementById('bt-host-info');
+        const btHostName = document.getElementById('bt-host-name');
+
+        const updateBtUi = (status, host) => {
+            if (btStatusBadge) {
+                if (status === 'connected') {
+                    btStatusBadge.textContent = 'Connected';
+                    btStatusBadge.style.background = '#059669';
+                } else if (status === 'ready') {
+                    btStatusBadge.textContent = 'Ready / Discoverable';
+                    btStatusBadge.style.background = '#0284c7';
+                } else if (status === 'disabled') {
+                    btStatusBadge.textContent = 'BT Off';
+                    btStatusBadge.style.background = '#eab308';
+                } else if (status === 'unsupported') {
+                    btStatusBadge.textContent = 'Unsupported';
+                    btStatusBadge.style.background = '#dc2626';
+                } else {
+                    btStatusBadge.textContent = 'Standby';
+                    btStatusBadge.style.background = '#475569';
+                }
+            }
+            if (btHostInfo && btHostName) {
+                if (status === 'connected' && host) {
+                    btHostName.textContent = host;
+                    btHostInfo.style.display = 'block';
+                } else {
+                    btHostInfo.style.display = 'none';
+                }
+            }
+        };
+
+        const toggleBluetooth = (e) => {
+            if (e) e.stopPropagation();
+            if (this.network.currentTransport === 'bluetooth') {
+                if (window.OmniPadNative && typeof window.OmniPadNative.stopBluetoothHid === 'function') {
+                    window.OmniPadNative.stopBluetoothHid();
+                }
+                this.network.currentTransport = 'wifi';
+                this.network.connect();
+                updateBtUi('standby');
+                this.showToast('Switched to WiFi / USB Mode');
+            } else {
+                if (window.OmniPadNative && typeof window.OmniPadNative.switchToBluetoothMode === 'function') {
+                    window.OmniPadNative.switchToBluetoothMode();
+                    this.network.currentTransport = 'bluetooth';
+                    if (this.network.socket) {
+                        try { this.network.socket.close(); } catch (err) { }
+                    }
+                    updateBtUi('ready');
+                    this.showToast('Bluetooth HID Gamepad Mode Active! Discoverable by PC/Host.');
+                } else {
+                    this.showToast('Direct Bluetooth requires OmniPad Android App (Android 9+)');
+                }
+            }
+        };
+
+        if (btnToggleBt) btnToggleBt.addEventListener('click', toggleBluetooth);
+        if (btnBtEnable) btnBtEnable.addEventListener('click', () => {
+            if (window.OmniPadNative && typeof window.OmniPadNative.switchToBluetoothMode === 'function') {
+                window.OmniPadNative.switchToBluetoothMode();
+                this.network.currentTransport = 'bluetooth';
+                if (this.network.socket) {
+                    try { this.network.socket.close(); } catch (err) { }
+                }
+                updateBtUi('ready');
+                this.showToast('Bluetooth HID Gamepad Mode Active');
+            } else {
+                this.showToast('Direct Bluetooth requires OmniPad Android App (Android 9+)');
+            }
+        });
+        if (btnBtDisable) btnBtDisable.addEventListener('click', () => {
+            if (window.OmniPadNative && typeof window.OmniPadNative.stopBluetoothHid === 'function') {
+                window.OmniPadNative.stopBluetoothHid();
+            }
+            this.network.currentTransport = 'wifi';
+            this.network.connect();
+            updateBtUi('standby');
+            this.showToast('Switched to WiFi / USB Mode');
+        });
+
+        this.network.onBluetoothStateChange = (status, host) => {
+            updateBtUi(status, host);
+        };
+
+        // If native bridge exists, sync initial BT state
+        if (window.OmniPadNative && typeof window.OmniPadNative.getBluetoothStatus === 'function') {
+            try {
+                const initStatus = window.OmniPadNative.getBluetoothStatus();
+                const initHost = window.OmniPadNative.getBluetoothHost();
+                if (initStatus && initStatus !== 'none') {
+                    updateBtUi(initStatus, initHost);
+                }
+            } catch (err) { }
+        }
 
         // Headphone Jack (Audio Streaming) Button & Callback
         const btnAudioJack = document.getElementById('btn-audio-jack');
@@ -266,11 +504,91 @@ class OmniPadApp {
                 audioJackText.textContent = streaming ? 'Jack: ON' : 'Jack: OFF';
             }
             if (streaming) {
-                this.showToast('🎧 Headphone Jack Connected (Game Audio Live)');
+                this.showToast('Headphone Jack Connected (Game Audio Live)');
             } else {
-                this.showToast('🎧 Headphone Jack Disconnected');
+                this.showToast('Headphone Jack Disconnected');
             }
         };
+
+        // Wireless Microphone Engine UI Listeners & Handlers
+        const btnHudMic = document.getElementById('btn-hud-mic');
+        const hudMicText = document.getElementById('hud-mic-text');
+        const btnTbMic = document.getElementById('btn-topbar-mic');
+        const tbMicText = document.getElementById('topbar-mic-text');
+
+        const toggleMicHandler = async (e) => {
+            if (e) e.stopPropagation();
+            hideTopBar();
+            await this.mic.toggleMic();
+        };
+
+        if (btnHudMic) btnHudMic.addEventListener('click', toggleMicHandler);
+        if (btnTbMic) btnTbMic.addEventListener('click', toggleMicHandler);
+
+        this.mic.onStatusChange = (status) => {
+            const isLive = (status === 'live');
+            if (btnHudMic) btnHudMic.classList.toggle('active', isLive);
+            if (btnTbMic) btnTbMic.classList.toggle('active', isLive);
+            if (hudMicText) hudMicText.textContent = isLive ? 'Mic: LIVE' : 'Mic: OFF';
+            if (tbMicText) tbMicText.textContent = isLive ? 'Mic: LIVE' : 'Mic';
+            this.showToast(isLive ? 'Microphone Streaming to PC (Discord / Steam)' : 'Microphone Disconnected');
+        };
+
+        this.mic.onLevelChange = (lvl) => {
+            if (btnHudMic) {
+                btnHudMic.style.boxShadow = lvl > 0.05 ? `0 0 ${Math.round(lvl * 16)}px rgba(0, 230, 118, 0.9)` : '';
+            }
+            if (btnTbMic) {
+                btnTbMic.style.boxShadow = lvl > 0.05 ? `0 0 ${Math.round(lvl * 16)}px rgba(0, 230, 118, 0.9)` : '';
+            }
+        };
+
+        // Low-Latency Background Screen Streaming UI Listeners & Handlers
+        const btnHudStream = document.getElementById('btn-hud-stream');
+        const hudStreamText = document.getElementById('hud-stream-text');
+        const btnTbStream = document.getElementById('btn-topbar-stream');
+        const tbStreamText = document.getElementById('topbar-stream-text');
+
+        const toggleStreamHandler = (e) => {
+            if (e) e.stopPropagation();
+            hideTopBar();
+            this.screenStream.toggleStream();
+        };
+
+        if (btnHudStream) btnHudStream.addEventListener('click', toggleStreamHandler);
+        if (btnTbStream) btnTbStream.addEventListener('click', toggleStreamHandler);
+
+        this.screenStream.onStatusChange = (status) => {
+            const isActive = (status === 'active');
+            if (btnHudStream) btnHudStream.classList.toggle('active', isActive);
+            if (btnTbStream) btnTbStream.classList.toggle('active', isActive);
+            if (hudStreamText) hudStreamText.textContent = isActive ? 'Stream: ON' : 'Stream: OFF';
+            if (tbStreamText) tbStreamText.textContent = isActive ? 'Stream: ON' : 'Stream';
+            this.showToast(isActive ? 'Game Background Stream Active (60 FPS)' : 'Screen Stream Stopped');
+        };
+
+        // Virtual Mouse Trackpad & Virtual Keyboard Overlays
+        const btnHudTrackpad = document.getElementById('btn-hud-trackpad');
+        const btnTbTrackpad = document.getElementById('btn-topbar-trackpad');
+        const btnHudKeyboard = document.getElementById('btn-hud-keyboard');
+        const btnTbKeyboard = document.getElementById('btn-topbar-keyboard');
+
+        const toggleTrackpadHandler = (e) => {
+            if (e) e.stopPropagation();
+            hideTopBar();
+            this.mouseKeyboard.toggleTrackpad();
+        };
+
+        const toggleKeyboardHandler = (e) => {
+            if (e) e.stopPropagation();
+            hideTopBar();
+            this.mouseKeyboard.toggleKeyboard();
+        };
+
+        if (btnHudTrackpad) btnHudTrackpad.addEventListener('click', toggleTrackpadHandler);
+        if (btnTbTrackpad) btnTbTrackpad.addEventListener('click', toggleTrackpadHandler);
+        if (btnHudKeyboard) btnHudKeyboard.addEventListener('click', toggleKeyboardHandler);
+        if (btnTbKeyboard) btnTbKeyboard.addEventListener('click', toggleKeyboardHandler);
 
         // Clicking / touching anywhere on the gamepad container collapses the top drawer during play
         if (this.container) {
@@ -329,6 +647,112 @@ class OmniPadApp {
             });
         });
 
+        // HIDOmniPadBus & Profile Presets System
+        const presetSelect = document.getElementById('setting-controller-preset');
+        const presetDesc = document.getElementById('preset-description');
+        const busStatusBadge = document.getElementById('bus-driver-status-badge');
+        const busDriverSummary = document.getElementById('bus-driver-summary');
+        const btnBusInstall = document.getElementById('btn-bus-install');
+        const btnBusUninstall = document.getElementById('btn-bus-uninstall');
+        const updaterVersionBadge = document.getElementById('updater-version-badge');
+        const updaterStatusText = document.getElementById('updater-status-text');
+        const btnUpdaterCheck = document.getElementById('btn-updater-check');
+        const btnUpdaterApply = document.getElementById('btn-updater-apply');
+
+        const refreshBusStatus = () => {
+            fetch('/api/bus/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data && busStatusBadge) {
+                        busStatusBadge.textContent = data.primaryEngine || 'Active';
+                        if (busDriverSummary) busDriverSummary.textContent = data.statusSummary || '';
+                    }
+                    if (data && data.currentPreset && presetSelect) {
+                        presetSelect.value = data.currentPreset;
+                    }
+                })
+                .catch(() => {});
+        };
+        refreshBusStatus();
+
+        if (presetSelect) {
+            presetSelect.addEventListener('change', (e) => {
+                const preset = e.target.value;
+                fetch(`/api/settings/controller-profile?preset=${encodeURIComponent(preset)}`, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => {
+                        this.showToast(`Controller Mode: ${preset}`);
+                        refreshBusStatus();
+                    })
+                    .catch(err => {
+                        this.showToast(`Profile switch error: ${err.message}`);
+                    });
+            });
+        }
+
+        if (btnBusInstall) {
+            btnBusInstall.addEventListener('click', () => {
+                this.showToast('Installing HIDOmniPadBus drivers...');
+                fetch('/api/bus/install', { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => {
+                        this.showToast(res.success ? 'Drivers successfully installed!' : 'Driver install encountered notices.');
+                        refreshBusStatus();
+                    })
+                    .catch(err => this.showToast(`Install error: ${err.message}`));
+            });
+        }
+
+        if (btnBusUninstall) {
+            btnBusUninstall.addEventListener('click', () => {
+                if (confirm('Uninstall all virtual gamepad drivers and device nodes?')) {
+                    this.showToast('Uninstalling drivers...');
+                    fetch('/api/bus/uninstall', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(res => {
+                            this.showToast('Drivers cleanly uninstalled.');
+                            refreshBusStatus();
+                        })
+                        .catch(err => this.showToast(`Uninstall error: ${err.message}`));
+                }
+            });
+        }
+
+        if (btnUpdaterCheck) {
+            btnUpdaterCheck.addEventListener('click', () => {
+                updaterStatusText.textContent = 'Checking for updates...';
+                fetch('/api/updater/status')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (updaterVersionBadge) updaterVersionBadge.textContent = `v${data.currentVersion}`;
+                        if (data.isUpdateAvailable) {
+                            updaterStatusText.innerHTML = `<b style="color: #4ade80;">Update available: v${data.latestVersion}!</b> ${data.releaseTitle || ''}`;
+                            if (btnUpdaterApply) btnUpdaterApply.style.display = 'block';
+                        } else {
+                            updaterStatusText.textContent = `OmniPad v${data.currentVersion} is up to date.`;
+                            if (btnUpdaterApply) btnUpdaterApply.style.display = 'none';
+                        }
+                    })
+                    .catch(err => {
+                        updaterStatusText.textContent = `Check failed: ${err.message}`;
+                    });
+            });
+        }
+
+        if (btnUpdaterApply) {
+            btnUpdaterApply.addEventListener('click', () => {
+                if (confirm('Apply update and restart OmniPad server?')) {
+                    this.showToast('Launching OmniPadUpdater...');
+                    fetch('/api/updater/apply', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(res => {
+                            this.showToast(res.message || 'Updating...');
+                        })
+                        .catch(err => this.showToast(`Update error: ${err.message}`));
+                }
+            });
+        }
+
         // Theme & CSS Studio, Import/Export, and Custom Presets
         this.initDesignStudio();
         this.initImportExportSystem();
@@ -383,6 +807,38 @@ class OmniPadApp {
             });
         }
 
+        // Controller Opacity (Stream Transparency) Slider
+        const opacitySlider = document.getElementById('setting-control-opacity');
+        const opacityVal = document.getElementById('val-control-opacity');
+        if (opacitySlider && opacityVal) {
+            const currentOp = Math.round((this.screenStream ? this.screenStream.controlOpacity : 0.85) * 100);
+            opacitySlider.value = currentOp;
+            opacityVal.textContent = `${currentOp}%`;
+            opacitySlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                opacityVal.textContent = `${val}%`;
+                if (this.screenStream) {
+                    this.screenStream.setControlOpacity(val / 100.0);
+                }
+            });
+        }
+
+        // Virtual Mouse Trackpad Sensitivity Slider
+        const trackpadSensSlider = document.getElementById('setting-trackpad-sens');
+        const trackpadSensVal = document.getElementById('val-trackpad-sens');
+        if (trackpadSensSlider && trackpadSensVal) {
+            const currentSens = this.mouseKeyboard ? this.mouseKeyboard.sensitivity : 1.4;
+            trackpadSensSlider.value = Math.round(currentSens * 10);
+            trackpadSensVal.textContent = `${currentSens.toFixed(1)}x`;
+            trackpadSensSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10) / 10.0;
+                trackpadSensVal.textContent = `${val.toFixed(1)}x`;
+                if (this.mouseKeyboard) {
+                    this.mouseKeyboard.sensitivity = val;
+                }
+            });
+        }
+
         // Gyro Settings
         on('setting-gyro-mode', 'change', (e) => {
             this.gyro.mode = e.target.value;
@@ -413,6 +869,9 @@ class OmniPadApp {
             if (themeDropdown) themeDropdown.value = themeClass;
             if (studioThemeSelect) studioThemeSelect.value = themeClass;
             localStorage.setItem('omnipad_theme', themeClass);
+            if (window.omniPadSelect) {
+                window.omniPadSelect.updateAllTriggers();
+            }
         };
 
         if (themeDropdown) themeDropdown.addEventListener('change', (e) => syncTheme(e.target.value));
@@ -514,6 +973,9 @@ class OmniPadApp {
         const studioThemeSelect = document.getElementById('studio-theme-select');
         if (themeDropdown) themeDropdown.value = savedTheme;
         if (studioThemeSelect) studioThemeSelect.value = savedTheme;
+        if (window.omniPadSelect) {
+            window.omniPadSelect.updateAllTriggers();
+        }
 
         const cssVars = this.getSavedCssVars();
         for (const k of Object.keys(cssVars)) {
@@ -672,7 +1134,7 @@ class OmniPadApp {
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(jsonStr).then(() => {
-                this.showToast('📋 Preset JSON copied to clipboard!');
+                this.showToast('Preset JSON copied to clipboard!');
             }).catch(() => {
                 this.fallbackCopyToClipboard(jsonStr);
             });
@@ -690,7 +1152,7 @@ class OmniPadApp {
         ta.select();
         try {
             document.execCommand('copy');
-            this.showToast('📋 Preset JSON copied to clipboard!');
+            this.showToast('Preset JSON copied to clipboard!');
         } catch (e) {
             alert('Could not auto-copy. Please use Export dialog to copy manually.');
         }
@@ -898,8 +1360,11 @@ class OmniPadApp {
     }
 
     loadProfile(key) {
+        this.currentPresetKey = key;
+        if (this.presetSelector) this.presetSelector.value = key;
+
         // Enforce cache invalidation for upgraded ergonomic presets
-        const PRESET_VERSION = 'v8_expanded_20_presets';
+        const PRESET_VERSION = 'v9_expanded_24_presets';
         if (localStorage.getItem('omnipad_version') !== PRESET_VERSION) {
             for (let k of Object.keys(LAYOUT_PRESETS)) {
                 localStorage.removeItem(`omnipad_layout_${k}`);
@@ -1249,11 +1714,14 @@ class OmniPadApp {
                 el.classList.add('trackpad-surface');
                 let lastX, lastY;
                 el.addEventListener('pointerdown', (e) => {
+                    if (this.customizer.isEditing || document.body.classList.contains('editing')) return;
+                    try { el.setPointerCapture(e.pointerId); } catch (_) {}
                     lastX = e.clientX;
                     lastY = e.clientY;
                     this.gyro.setAimingTouchActive(true);
                 });
                 el.addEventListener('pointermove', (e) => {
+                    if (this.customizer.isEditing || document.body.classList.contains('editing')) return;
                     if (lastX !== undefined) {
                         const dx = (e.clientX - lastX) * 280;
                         const dy = -(e.clientY - lastY) * 280;
@@ -1262,11 +1730,13 @@ class OmniPadApp {
                         this.touch.setStick('right', dx / 32767, dy / 32767);
                     }
                 });
-                el.addEventListener('pointerup', () => {
+                const releaseAim = () => {
                     lastX = undefined;
                     this.gyro.setAimingTouchActive(false);
                     this.touch.setStick('right', 0, 0);
-                });
+                };
+                el.addEventListener('pointerup', releaseAim);
+                el.addEventListener('pointercancel', releaseAim);
             }
             // 10. Combo Button
             else if (item.type === 'combo') {
@@ -1276,15 +1746,19 @@ class OmniPadApp {
                 }
                 el.textContent = item.label;
                 el.addEventListener('pointerdown', (e) => {
+                    if (this.customizer.isEditing || document.body.classList.contains('editing')) return;
                     e.preventDefault();
+                    try { el.setPointerCapture(e.pointerId); } catch (_) {}
                     this.touch.triggerHaptic(20);
                     el.classList.add('active');
                     this.macros.triggerCombo(item.combo, true);
                 });
-                el.addEventListener('pointerup', () => {
+                const releaseCombo = () => {
                     el.classList.remove('active');
                     this.macros.triggerCombo(item.combo, false);
-                });
+                };
+                el.addEventListener('pointerup', releaseCombo);
+                el.addEventListener('pointercancel', releaseCombo);
             }
             // 11. Macro Button
             else if (item.type === 'macro') {
@@ -1294,15 +1768,19 @@ class OmniPadApp {
                 }
                 el.textContent = item.label;
                 el.addEventListener('pointerdown', (e) => {
+                    if (this.customizer.isEditing || document.body.classList.contains('editing')) return;
                     e.preventDefault();
+                    try { el.setPointerCapture(e.pointerId); } catch (_) {}
                     this.touch.triggerHaptic(25);
                     el.classList.add('active');
                     this.macros.executeMacro(item.macroId, false);
                 });
-                el.addEventListener('pointerup', () => {
+                const releaseMacro = () => {
                     el.classList.remove('active');
                     this.macros.cancelActiveMacro();
-                });
+                };
+                el.addEventListener('pointerup', releaseMacro);
+                el.addEventListener('pointercancel', releaseMacro);
             }
 
             // Enable customizer drag handling in Edit mode
@@ -1341,62 +1819,15 @@ class OmniPadApp {
         }
     }
 
-    setupModalScrollHandling() {
-        const scrollBody = document.querySelector('.player-switch-body');
-        if (!scrollBody || scrollBody._scrollBound) return;
-        scrollBody._scrollBound = true;
-
-        let startY = 0;
-        let startScrollTop = 0;
-        let lastY = 0;
-        let lastTime = 0;
-        let velocity = 0;
-        let isTouching = false;
-        let animId = null;
-
-        scrollBody.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1) return;
-            if (animId) cancelAnimationFrame(animId);
-            isTouching = true;
-            startY = e.touches[0].clientY;
-            startScrollTop = scrollBody.scrollTop;
-            lastY = startY;
-            lastTime = Date.now();
-            velocity = 0;
-        }, { passive: true });
-
-        scrollBody.addEventListener('touchmove', (e) => {
-            if (!isTouching || e.touches.length !== 1) return;
-            const currentY = e.touches[0].clientY;
-            const now = Date.now();
-            const dt = now - lastTime;
-            if (dt > 0) {
-                velocity = (lastY - currentY) / dt;
-            }
-            lastY = currentY;
-            lastTime = now;
-
-            const dy = currentY - startY;
-            scrollBody.scrollTop = startScrollTop - dy;
-        }, { passive: true });
-
-        const endTouch = () => {
-            if (!isTouching) return;
-            isTouching = false;
-            if (Math.abs(velocity) > 0.15) {
-                let currentVelocity = velocity * 14;
-                const stepInertia = () => {
-                    if (Math.abs(currentVelocity) < 0.5) return;
-                    scrollBody.scrollTop += currentVelocity;
-                    currentVelocity *= 0.92;
-                    animId = requestAnimationFrame(stepInertia);
-                };
-                animId = requestAnimationFrame(stepInertia);
-            }
-        };
-
-        scrollBody.addEventListener('touchend', endTouch, { passive: true });
-        scrollBody.addEventListener('touchcancel', endTouch, { passive: true });
+    setupModalScrollHandling(targetEl) {
+        const bodies = targetEl ? [targetEl] : Array.from(document.querySelectorAll('.player-switch-body'));
+        bodies.forEach(scrollBody => {
+            if (!scrollBody || scrollBody._scrollBound) return;
+            scrollBody._scrollBound = true;
+            scrollBody.style.overflowY = 'auto';
+            scrollBody.style.webkitOverflowScrolling = 'touch';
+            scrollBody.style.touchAction = 'pan-y';
+        });
     }
 
     renderPlayerSlotsList() {
@@ -1595,6 +2026,310 @@ class OmniPadApp {
             this.network.respondToSwap(fromSlot, accepted);
             if (accepted) {
                 this.showToast('Swap accepted! Switching slots...');
+            }
+        };
+
+        if (btnAccept) {
+            btnAccept.onclick = (e) => {
+                e.stopPropagation();
+                handleChoice(true);
+            };
+        }
+        if (btnDecline) {
+            btnDecline.onclick = (e) => {
+                e.stopPropagation();
+                handleChoice(false);
+            };
+        }
+        if (backdrop) {
+            backdrop.onclick = (e) => {
+                e.stopPropagation();
+                handleChoice(false);
+            };
+        }
+    }
+
+    openShareLayoutModal() {
+        const modal = document.getElementById('modal-share-layout-target');
+        if (modal) {
+            const topBar = document.getElementById('top-bar');
+            if (topBar && !topBar.classList.contains('collapsed')) {
+                topBar.classList.add('collapsed');
+                document.body.classList.remove('toolbar-open');
+            }
+            this.renderShareLayoutTargetsList();
+            this.setupModalScrollHandling(modal.querySelector('.player-switch-body'));
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+    }
+
+    closeShareLayoutModal() {
+        const modal = document.getElementById('modal-share-layout-target');
+        if (modal) {
+            modal.classList.add('hidden');
+            const playerSwitch = document.getElementById('modal-player-switch');
+            const swapPrompt = document.getElementById('modal-swap-prompt');
+            const layoutPrompt = document.getElementById('modal-layout-prompt');
+            const settings = document.getElementById('settings-modal');
+            if ((!playerSwitch || playerSwitch.classList.contains('hidden')) &&
+                (!swapPrompt || swapPrompt.classList.contains('hidden')) &&
+                (!layoutPrompt || layoutPrompt.classList.contains('hidden')) &&
+                (!settings || settings.classList.contains('hidden'))) {
+                document.body.classList.remove('modal-open');
+            }
+        }
+    }
+
+    renderShareLayoutTargetsList() {
+        const container = document.getElementById('share-layout-targets-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const mySlot = this.network.padSlot;
+        const totalSlots = Math.max(16, (this.slotStatuses && this.slotStatuses.length) ? this.slotStatuses.length : 16);
+
+        const bundle = {
+            version: 2,
+            name: this.currentPresetKey || 'Custom Layout',
+            layout: this.currentLayout,
+            theme: document.body.className || 'theme-stealth',
+            cssVars: this.getSavedCssVars(),
+            customCss: localStorage.getItem('omnipad_custom_css') || ''
+        };
+
+        const bindSlotAction = (btn, action) => {
+            let startX = 0;
+            let startY = 0;
+            let hasMoved = false;
+
+            btn.addEventListener('pointerdown', (e) => {
+                startX = e.clientX;
+                startY = e.clientY;
+                hasMoved = false;
+            });
+
+            btn.addEventListener('pointermove', (e) => {
+                if (Math.abs(e.clientX - startX) > 8 || Math.abs(e.clientY - startY) > 8) {
+                    hasMoved = true;
+                }
+            });
+
+            btn.addEventListener('pointerup', (e) => {
+                if (!hasMoved) {
+                    e.stopPropagation();
+                    if (this.touch.hapticsEnabled) {
+                        try { navigator.vibrate(14); } catch (e) { }
+                    }
+                    action();
+                }
+            });
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        };
+
+        const createTierHeader = (title, badge) => {
+            const tier = document.createElement('div');
+            tier.className = 'slot-tier-header';
+            tier.innerHTML = `<span class="slot-tier-title">${title}</span><span class="slot-tier-badge">${badge}</span>`;
+            return tier;
+        };
+
+        // 1. Broadcast Card (Send to all connected players)
+        const bcastCard = document.createElement('div');
+        bcastCard.className = 'player-slot-card';
+        bcastCard.innerHTML = `
+            <div class="slot-card-header">
+                <div class="slot-card-identity">
+                    <span class="slot-number-pill" style="border-color: #38bdf8; color: #38bdf8; background: rgba(56, 189, 248, 0.15);">ALL</span>
+                    <span class="slot-card-name">Broadcast to All</span>
+                </div>
+                <span class="slot-status-pill" style="color: #38bdf8; background: rgba(56, 189, 248, 0.15);">Room</span>
+            </div>
+        `;
+        const bcastBtn = document.createElement('button');
+        bcastBtn.className = 'btn-slot-card-action btn-share-target-broadcast';
+        bcastBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            <span>Beam to Everyone</span>
+        `;
+        bindSlotAction(bcastBtn, () => {
+            this.network.shareLayoutWithPlayer(0xFF, bundle);
+            this.showToast('Broadcasting layout to all players...');
+            this.closeShareLayoutModal();
+        });
+        bcastCard.appendChild(bcastBtn);
+        container.appendChild(bcastCard);
+
+        // 2. Individual player slots (P1 to P16)
+        for (let i = 0; i < totalSlots; i++) {
+            if (i === 0) {
+                container.appendChild(createTierHeader('P1 – P4: Standard Co-op', 'Universal (XInput/WGI/SDL2)'));
+            } else if (i === 4) {
+                container.appendChild(createTierHeader('P5 – P8: Extended Party', 'WGI / DirectInput / SDL2'));
+            } else if (i === 8) {
+                container.appendChild(createTierHeader('P9 – P16: Mega-Party', 'WGI / SDL2 / Emulators'));
+            }
+
+            const isMe = (i === mySlot);
+            const isOccupied = this.slotStatuses && (this.slotStatuses[i] === 1);
+
+            const card = document.createElement('div');
+            card.className = `player-slot-card ${isMe ? 'active-user' : (isOccupied ? 'occupied' : '')}`;
+
+            card.innerHTML = `
+                <div class="slot-card-header">
+                    <div class="slot-card-identity">
+                        <span class="slot-number-pill">P${i + 1}</span>
+                        <span class="slot-card-name">Player ${i + 1}</span>
+                    </div>
+                    <span class="slot-status-pill">${isMe ? 'You' : (isOccupied ? 'Connected' : 'Offline')}</span>
+                </div>
+            `;
+
+            const actionBtn = document.createElement('button');
+            actionBtn.className = 'btn-slot-card-action';
+
+            if (isMe) {
+                actionBtn.classList.add('btn-active-indicator');
+                actionBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Current Device</span>
+                `;
+            } else if (isOccupied) {
+                actionBtn.classList.add('btn-share-target-action');
+                actionBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    <span>Beam Layout</span>
+                `;
+                bindSlotAction(actionBtn, () => {
+                    this.network.shareLayoutWithPlayer(i, bundle);
+                    this.showToast(`Beaming layout to Player ${i + 1}...`);
+                    this.closeShareLayoutModal();
+                });
+            } else {
+                actionBtn.style.opacity = '0.4';
+                actionBtn.style.cursor = 'not-allowed';
+                actionBtn.innerHTML = `<span>Slot Offline</span>`;
+            }
+
+            card.appendChild(actionBtn);
+            container.appendChild(card);
+        }
+    }
+
+    showLayoutPromptModal(fromSlot, bundle) {
+        this.currentLayoutShareSender = fromSlot;
+        this.pendingSharedLayout = bundle;
+        const modal = document.getElementById('modal-layout-prompt');
+        const desc = document.getElementById('layout-prompt-desc');
+        const nameEl = document.getElementById('layout-prompt-name');
+        const badgeEl = document.getElementById('layout-prompt-badge');
+        const timerBar = document.getElementById('layout-timer-bar');
+        const timerSec = document.getElementById('layout-timer-sec');
+        const btnAccept = document.getElementById('btn-accept-layout');
+        const btnDecline = document.getElementById('btn-decline-layout');
+        const backdrop = document.getElementById('backdrop-layout-prompt');
+
+        if (!modal) return;
+
+        // Hide top drawer if open
+        const topBar = document.getElementById('top-bar');
+        if (topBar && !topBar.classList.contains('collapsed')) {
+            topBar.classList.add('collapsed');
+            document.body.classList.remove('toolbar-open');
+        }
+
+        const layoutName = (bundle && bundle.name) ? bundle.name : 'Shared Layout';
+        const controlCount = (bundle && Array.isArray(bundle.layout)) ? bundle.layout.length : 
+                             (Array.isArray(bundle) ? bundle.length : 0);
+
+        if (desc) desc.textContent = `Player ${fromSlot + 1} wants to beam a layout to your screen.`;
+        if (nameEl) nameEl.textContent = layoutName;
+        if (badgeEl) badgeEl.textContent = `${controlCount} controls`;
+
+        try { navigator.vibrate([100, 60, 100]); } catch (e) { }
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+
+        const totalDuration = 15000;
+        const startTime = Date.now();
+        if (timerBar) timerBar.style.width = '100%';
+        if (timerSec) timerSec.textContent = '15s';
+
+        if (this.layoutCountdownInterval) clearInterval(this.layoutCountdownInterval);
+
+        const cleanup = () => {
+            if (this.layoutCountdownInterval) clearInterval(this.layoutCountdownInterval);
+            this.layoutCountdownInterval = null;
+            modal.classList.add('hidden');
+            const playerSwitch = document.getElementById('modal-player-switch');
+            const shareModal = document.getElementById('modal-share-layout-target');
+            const settings = document.getElementById('settings-modal');
+            if ((!playerSwitch || playerSwitch.classList.contains('hidden')) &&
+                (!shareModal || shareModal.classList.contains('hidden')) &&
+                (!settings || settings.classList.contains('hidden'))) {
+                document.body.classList.remove('modal-open');
+            }
+        };
+
+        this.layoutCountdownInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remainingRatio = Math.max(0, 1 - (elapsed / totalDuration));
+            const remainingSec = Math.max(0, Math.ceil((totalDuration - elapsed) / 1000));
+
+            if (timerBar) timerBar.style.width = `${(remainingRatio * 100).toFixed(1)}%`;
+            if (timerSec) timerSec.textContent = `${remainingSec}s`;
+
+            if (elapsed >= totalDuration) {
+                cleanup();
+                this.network.respondToLayoutShare(fromSlot, false, layoutName);
+                this.showToast('Layout share prompt expired.');
+            }
+        }, 100);
+
+        let answered = false;
+        const handleChoice = (accepted) => {
+            if (answered) return;
+            answered = true;
+            cleanup();
+            this.network.respondToLayoutShare(fromSlot, accepted, layoutName);
+            if (accepted) {
+                // Apply the layout immediately
+                this.currentLayout = (bundle && Array.isArray(bundle.layout)) ? bundle.layout : (Array.isArray(bundle) ? bundle : []);
+                if (bundle && bundle.theme) {
+                    document.body.className = bundle.theme;
+                    localStorage.setItem('omnipad_theme', bundle.theme);
+                }
+                if (bundle && bundle.cssVars) {
+                    localStorage.setItem('omnipad_css_vars', JSON.stringify(bundle.cssVars));
+                    for (const k of Object.keys(bundle.cssVars)) {
+                        document.documentElement.style.setProperty(k, bundle.cssVars[k]);
+                    }
+                }
+
+                // Also save into custom presets so recipient keeps it permanently
+                const customPresets = this.getCustomPresets();
+                const saveKey = 'shared_' + layoutName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                customPresets[saveKey] = {
+                    title: `P${fromSlot + 1}: ${layoutName}`,
+                    layout: this.currentLayout,
+                    theme: document.body.className || 'theme-stealth',
+                    cssVars: this.getSavedCssVars()
+                };
+                this.saveCustomPresetsDict(customPresets);
+                this.populateCustomPresetSelector();
+                this.renderCustomPresetsCatalog();
+
+                this.currentPresetKey = saveKey;
+                if (this.presetSelector) this.presetSelector.value = saveKey;
+                this.renderLayout();
+                this.showToast(`Layout "${layoutName}" applied and saved!`);
+            } else {
+                this.showToast('Layout declined.');
             }
         };
 

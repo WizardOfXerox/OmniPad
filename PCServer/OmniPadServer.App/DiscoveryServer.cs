@@ -11,13 +11,17 @@ public sealed class DiscoveryServer : IDisposable
 {
     private readonly UdpClient _socket;
     private readonly CancellationTokenSource _cts = new();
+    private readonly byte[] _cachedResponse;
     private Task? _listenTask;
 
-    public DiscoveryServer(int port = Protocol.DiscoveryPort)
+    public DiscoveryServer(int port = Protocol.DiscoveryPort, int webPort = Protocol.DefaultWebPort, string? machineName = null)
     {
         _socket = new UdpClient();
         _socket.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         _socket.Client.Bind(new IPEndPoint(IPAddress.Any, port));
+
+        string host = string.IsNullOrWhiteSpace(machineName) ? Environment.MachineName : machineName;
+        _cachedResponse = DiscoveryResponse.Encode((ushort)webPort, host);
     }
 
     public void Start()
@@ -27,28 +31,28 @@ public sealed class DiscoveryServer : IDisposable
 
     private async Task ListenLoopAsync()
     {
-        byte[] response = new byte[Protocol.SessionMessageSize];
-        var welcomeMsg = new SessionMessage(Protocol.MsgWelcome, Protocol.NoPad);
-        welcomeMsg.WriteTo(response);
-
-        try
+        while (!_cts.IsCancellationRequested)
         {
-            while (!_cts.IsCancellationRequested)
+            try
             {
                 var result = await _socket.ReceiveAsync(_cts.Token);
-                if (result.Buffer.Length == Protocol.SessionMessageSize &&
+                if (result.Buffer.Length >= Protocol.SessionMessageSize &&
                     SessionMessage.TryParse(result.Buffer, out var msg) &&
                     msg.Type == Protocol.MsgDiscover)
                 {
-                    // Respond back to phone with server confirmation
-                    await _socket.SendAsync(response, response.Length, result.RemoteEndPoint);
+                    // Respond back to phone with server confirmation and machine info
+                    await _socket.SendAsync(_cachedResponse, _cachedResponse.Length, result.RemoteEndPoint);
                 }
             }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Discovery] Listener error: {ex.Message}");
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                if (_cts.IsCancellationRequested) break;
+                Console.WriteLine($"[Discovery] Transient error: {ex.Message}");
+            }
         }
     }
 
