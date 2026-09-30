@@ -156,17 +156,52 @@ public static class HIDOmniPadBusManager
 
         if (string.IsNullOrEmpty(installer) || !File.Exists(installer))
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("[HIDOmniPadBus] ViGEm installer binary not found locally.");
+            string downloadDest = Path.Combine(AppContext.BaseDirectory, "ViGEmBus_Setup.exe");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("[HIDOmniPadBus] ViGEm installer binary not found locally. Downloading official WHQL installer from GitHub...");
             Console.ResetColor();
-            return false;
+
+            try
+            {
+                using var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(2) };
+                var bytes = httpClient.GetByteArrayAsync("https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe").GetAwaiter().GetResult();
+                File.WriteAllBytes(downloadDest, bytes);
+                installer = downloadDest;
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"[HIDOmniPadBus] ViGEmBus installer downloaded successfully ({bytes.Length / (1024 * 1024.0):F1} MB).");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[HIDOmniPadBus] Failed to download ViGEm installer: {ex.Message}");
+                Console.ResetColor();
+                return false;
+            }
         }
 
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"[HIDOmniPadBus] Running silent ViGEmBus installer: {Path.GetFileName(installer)}...");
+        Console.WriteLine($"[HIDOmniPadBus] Launching ViGEmBus installer: {Path.GetFileName(installer)}...");
         Console.ResetColor();
 
-        return RunCommand(installer, "/quiet /norestart");
+        try
+        {
+            var psi = new ProcessStartInfo(installer, "/quiet /norestart")
+            {
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+            using var p = Process.Start(psi);
+            p?.WaitForExit(30000);
+            return p?.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"[HIDOmniPadBus] Installer launch noticed: {ex.Message}");
+            Console.ResetColor();
+            return false;
+        }
     }
 
     public static bool InstallHIDMaestro()

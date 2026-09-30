@@ -40,6 +40,9 @@ jobs:
           Copy-Item -Path "publish/OmniPad-Portable/OmniPadServer.App.exe" -Destination "publish/OmniPad-Portable/OmniPadServer.exe" -Force
           dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
           dotnet publish PCServer/OmniPadServer.Legacinator/OmniPadServer.Legacinator.csproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o publish/OmniPad-Portable
+          Copy-Item -Path "OmniPad-Portable/*.bat" -Destination "publish/OmniPad-Portable/" -Force
+          Copy-Item -Path "OmniPad-Portable/setup_driver.ps1" -Destination "publish/OmniPad-Portable/" -Force
+          if (Test-Path "OmniPad-Portable/README.md") { Copy-Item -Path "OmniPad-Portable/README.md" -Destination "publish/OmniPad-Portable/README_PORTABLE.md" -Force }
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/WebClient" -Force | Out-Null
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/wwwroot" -Force | Out-Null
           Copy-Item -Path "WebClient/*" -Destination "publish/OmniPad-Portable/WebClient/" -Recurse -Force
