@@ -39,32 +39,33 @@ To build the entire project locally, ensure you have the following installed:
 
 | Tool | Version Required | Purpose |
 |---|:---:|---|
-| **Operating System** | Windows 10 / 11 (x64) or Linux (Ubuntu, Debian, Fedora, Arch, SteamOS) | Host OS for running PCServer |
+| **Operating System** | Windows 10 / 11 (x64), Linux (Ubuntu, Debian, Fedora, Arch, SteamOS), or macOS 12+ | Host OS for running PCServer |
 | **.NET SDK** | `8.0.100` or higher | Compiles `PCServer` and runs unit tests |
 | **Java Development Kit** | **JDK 17 or JDK 21** | Required for Android Gradle builds (JDK 25 is unsupported by Gradle) |
 | **Android SDK** | API 35 (Build-Tools 35.0.0) | Compiles `AndroidClient` APK |
+| **Xcode / Command Line Tools** | Xcode 14, 15, or 16+ | Compiles and archives `iOSClient` IPA on macOS |
 | **Gamepad Driver (Windows)** | ViGEmBus v1.22.0+ WHQL *(Optional)* | Virtual Xbox/DS4 controllers. *(Fallback: Keyboard/Mouse)* |
 | **Gamepad Driver (Linux)** | `/dev/uinput` (Kernel module) | Native virtual Xbox/DS4 controllers and mouse/keyboard emulation |
 | **Python** *(Optional)* | 3.8+ | For running `tools/fake_phone.py` protocol stress tests |
 
 > [!TIP]
-> On Linux, zero third-party drivers are required. OmniPad leverages native `/dev/uinput` to instantiate high-performance virtual Xbox 360 and DualShock 4 gamepads directly into the Linux evdev/input subsystem.
+> On Linux, zero third-party drivers are required. OmniPad leverages native `/dev/uinput` to instantiate high-performance virtual Xbox 360 and DualShock 4 gamepads directly into the Linux evdev/input subsystem. On macOS, CoreGraphics APIs provide native mouse and keyboard simulation.
 
 ---
 
 ## 🚀 One-Click Automated Build
 
-### Linux (Bash)
-We provide `./build.sh` for one-click compilation, testing, and packaging on Linux:
+### Linux & macOS (Bash)
+We provide `./build.sh` for one-click compilation, testing, and packaging on Linux and macOS:
 
 ```bash
 # Make executable (if needed)
 chmod +x build.sh
 
-# Build PC Server and run unit tests
+# Build PC Server and run unit tests (auto-detects Linux vs macOS Darwin)
 ./build.sh
 
-# Build and package into OmniPad-Linux-x64.tar.gz
+# Build and package into release archive (.tar.gz)
 ./build.sh --package
 
 # Skip tests for rapid iteration
