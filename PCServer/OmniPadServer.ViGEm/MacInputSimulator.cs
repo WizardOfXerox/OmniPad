@@ -263,11 +263,13 @@ public sealed class MacInputSimulator : IPadBackend
         }
     }
 
+    public static bool SyncWithHardwareCursor { get; set; } = false;
+
     public static void MouseMove(short dx, short dy)
     {
         lock (_stateLock)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (SyncWithHardwareCursor && RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 try
                 {
