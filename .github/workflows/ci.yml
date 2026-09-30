@@ -108,7 +108,79 @@ jobs:
           if-no-files-found: error
 
   # =========================================================================
-  # 3. ANDROID CLIENT (GRADLE / KOTLIN)
+  # 3. PC SERVER & UNIT TESTS (MACOS ARM64 & x64 DUAL UNIVERSAL .NET 8)
+  # =========================================================================
+  build-pc-server-macos:
+    name: Build PC Server (macOS Universal) & Run Tests
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build PCServer Solution (Release - net8.0)
+        run: dotnet build PCServer/OmniPadServer.sln -c Release -f net8.0
+
+      - name: Run Unit Tests
+        run: dotnet test PCServer/OmniPadServer.Tests/OmniPadServer.Tests.csproj -c Release -f net8.0 --no-build --verbosity normal
+
+      - name: Publish Self-Contained Binaries (Apple Silicon arm64 & Intel x64)
+        run: |
+          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/osx-arm64
+          dotnet publish PCServer/OmniPadServer.App/OmniPadServer.App.csproj -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/osx-x64
+          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/osx-arm64
+          dotnet publish PCServer/OmniPadUpdater.App/OmniPadUpdater.App.csproj -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o publish/osx-x64
+
+          mkdir -p publish/OmniPad-macOS/WebClient publish/OmniPad-macOS/wwwroot
+          cp publish/osx-arm64/OmniPadServer.App publish/OmniPad-macOS/OmniPadServer-arm64
+          cp publish/osx-x64/OmniPadServer.App publish/OmniPad-macOS/OmniPadServer-x64
+          cp publish/osx-arm64/OmniPadUpdater publish/OmniPad-macOS/OmniPadUpdater-arm64
+          cp publish/osx-x64/OmniPadUpdater publish/OmniPad-macOS/OmniPadUpdater-x64
+          chmod +x publish/OmniPad-macOS/OmniPadServer-* publish/OmniPad-macOS/OmniPadUpdater-*
+
+          cat << 'EOF' > publish/OmniPad-macOS/OmniPadServer
+          #!/usr/bin/env bash
+          ARCH=$(uname -m)
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          if [ "$ARCH" = "arm64" ]; then
+              exec "$DIR/OmniPadServer-arm64" "$@"
+          else
+              exec "$DIR/OmniPadServer-x64" "$@"
+          fi
+          EOF
+          chmod +x publish/OmniPad-macOS/OmniPadServer
+
+          cat << 'EOF' > publish/OmniPad-macOS/OmniPadUpdater
+          #!/usr/bin/env bash
+          ARCH=$(uname -m)
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          if [ "$ARCH" = "arm64" ]; then
+              exec "$DIR/OmniPadUpdater-arm64" "$@"
+          else
+              exec "$DIR/OmniPadUpdater-x64" "$@"
+          fi
+          EOF
+          chmod +x publish/OmniPad-macOS/OmniPadUpdater
+
+          cp -r WebClient/* publish/OmniPad-macOS/WebClient/
+          cp -r WebClient/* publish/OmniPad-macOS/wwwroot/
+          if [ -f "version.json" ]; then cp version.json publish/OmniPad-macOS/; fi
+          tar -czvf OmniPad-macOS.tar.gz -C publish OmniPad-macOS
+
+      - name: Upload macOS PC Server Tarball Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-macOS-tarball
+          path: OmniPad-macOS.tar.gz
+          if-no-files-found: error
+
+  # =========================================================================
+  # 4. ANDROID CLIENT (GRADLE / KOTLIN)
   # =========================================================================
   build-android-client:
     name: Build Android Client APK
@@ -145,11 +217,53 @@ jobs:
           if-no-files-found: error
 
   # =========================================================================
-  # 4. UNIVERSAL BUNDLE PACKAGING
+  # 5. IOS CLIENT (XCODEBUILD / SWIFTUI / UNSIGNED IPA)
+  # =========================================================================
+  build-ios-client:
+    name: Build iOS Client (Swift / IPA)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Sync WebClient Assets
+        run: |
+          mkdir -p iOSClient/OmniPad/Resources/Web
+          cp -r WebClient/* iOSClient/OmniPad/Resources/Web/
+
+      - name: Build and Archive iOS App (Unsigned)
+        run: |
+          xcodebuild archive \
+            -project iOSClient/OmniPad.xcodeproj \
+            -scheme OmniPad \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/OmniPad.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Package OmniPad.ipa for Sideloading (AltStore / SideStore / TrollStore)
+        run: |
+          mkdir -p Payload
+          cp -r build/OmniPad.xcarchive/Products/Applications/OmniPad.app Payload/
+          zip -r OmniPad.ipa Payload
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniPad-iOS-IPA
+          path: OmniPad.ipa
+          if-no-files-found: error
+
+  # =========================================================================
+  # 6. UNIVERSAL BUNDLE PACKAGING & RELEASE
   # =========================================================================
   package-distribution:
     name: Package Universal Portable Release
-    needs: [build-pc-server, build-pc-server-linux, build-android-client]
+    needs: [build-pc-server, build-pc-server-linux, build-pc-server-macos, build-android-client, build-ios-client]
     runs-on: windows-latest
 
     steps:
@@ -168,11 +282,23 @@ jobs:
           name: OmniPad-Linux-x64-tarball
           path: .
 
+      - name: Download macOS PC Server Tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: OmniPad-macOS-tarball
+          path: .
+
       - name: Download Android APK Artifact
         uses: actions/download-artifact@v4
         with:
           name: OmniPad-Android-APK
           path: dist/OmniPad-Portable/apks
+
+      - name: Download iOS IPA Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: OmniPad-iOS-IPA
+          path: .
 
       - name: Rename APK to Standard Name
         run: |
@@ -180,10 +306,16 @@ jobs:
             Move-Item -Path "dist/OmniPad-Portable/apks/app-debug.apk" -Destination "dist/OmniPad-Portable/apks/OmniPad.apk" -Force
           }
 
-      - name: Locate Linux Tarball for Release
+      - name: Locate Tarballs and IPA for Release
         run: |
           if (Test-Path "OmniPad-Linux-x64-tarball/OmniPad-Linux-x64.tar.gz") {
             Move-Item -Path "OmniPad-Linux-x64-tarball/OmniPad-Linux-x64.tar.gz" -Destination "OmniPad-Linux-x64.tar.gz" -Force
+          }
+          if (Test-Path "OmniPad-macOS-tarball/OmniPad-macOS.tar.gz") {
+            Move-Item -Path "OmniPad-macOS-tarball/OmniPad-macOS.tar.gz" -Destination "OmniPad-macOS.tar.gz" -Force
+          }
+          if (Test-Path "OmniPad-iOS-IPA/OmniPad.ipa") {
+            Move-Item -Path "OmniPad-iOS-IPA/OmniPad.ipa" -Destination "OmniPad.ipa" -Force
           }
 
       - name: Compress Release Bundle (ZIP)
@@ -211,7 +343,9 @@ jobs:
           files: |
             OmniPad-Portable.zip
             OmniPad-Linux-x64.tar.gz
+            OmniPad-macOS.tar.gz
             OmniPad.apk
+            OmniPad.ipa
           generate_release_notes: true
           draft: false
           prerelease: false

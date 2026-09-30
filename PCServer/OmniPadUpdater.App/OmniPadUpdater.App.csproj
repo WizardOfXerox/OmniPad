@@ -22,7 +22,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyTitle>OmniPad Updater</AssemblyTitle>
     <AssemblyProduct>OmniPad</AssemblyProduct>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
   </PropertyGroup>
 
 </Project>

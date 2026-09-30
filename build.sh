@@ -38,13 +38,22 @@ for arg in "$@"; do
     esac
 done
 
+HOST_OS=$(uname -s)
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PCSERVER_DIR="$SCRIPT_DIR/PCServer"
 WEBCLIENT_DIR="$SCRIPT_DIR/WebClient"
-PUBLISH_DIR="$SCRIPT_DIR/publish/OmniPad-Linux-x64"
+
+if [ "$HOST_OS" = "Darwin" ]; then
+    PUBLISH_DIR="$SCRIPT_DIR/publish/OmniPad-macOS"
+    OS_NAME="macOS"
+else
+    PUBLISH_DIR="$SCRIPT_DIR/publish/OmniPad-Linux-x64"
+    OS_NAME="Linux"
+fi
 
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;36m       OmniPad Linux Host Build & Publish Pipeline (.NET 8)      \033[0m"
+echo -e "\033[1;36m       OmniPad $OS_NAME Host Build & Publish Pipeline (.NET 8)      \033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
 
 # Ensure dotnet SDK is available
@@ -86,25 +95,68 @@ else
 fi
 
 # --- 4. PUBLISH SELF-CONTAINED SINGLE-FILE BINARIES ---
-echo -e "\n\033[1;33m[4/4] Publishing self-contained single-file Linux x64 binaries...\033[0m"
+echo -e "\n\033[1;33m[4/4] Publishing self-contained single-file $OS_NAME binaries...\033[0m"
 mkdir -p "$PUBLISH_DIR"
 
-dotnet publish "$PCSERVER_DIR/OmniPadServer.App/OmniPadServer.App.csproj" \
-    -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
-    -o "$PUBLISH_DIR"
+if [ "$HOST_OS" = "Darwin" ]; then
+    dotnet publish "$PCSERVER_DIR/OmniPadServer.App/OmniPadServer.App.csproj" \
+        -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$SCRIPT_DIR/publish/osx-arm64" >/dev/null
+    dotnet publish "$PCSERVER_DIR/OmniPadServer.App/OmniPadServer.App.csproj" \
+        -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$SCRIPT_DIR/publish/osx-x64" >/dev/null
+    dotnet publish "$PCSERVER_DIR/OmniPadUpdater.App/OmniPadUpdater.App.csproj" \
+        -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$SCRIPT_DIR/publish/osx-arm64" >/dev/null
+    dotnet publish "$PCSERVER_DIR/OmniPadUpdater.App/OmniPadUpdater.App.csproj" \
+        -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$SCRIPT_DIR/publish/osx-x64" >/dev/null
 
-# Standardize executable name
-if [ -f "$PUBLISH_DIR/OmniPadServer.App" ]; then
-    cp -f "$PUBLISH_DIR/OmniPadServer.App" "$PUBLISH_DIR/OmniPadServer"
+    cp -f "$SCRIPT_DIR/publish/osx-arm64/OmniPadServer.App" "$PUBLISH_DIR/OmniPadServer-arm64"
+    cp -f "$SCRIPT_DIR/publish/osx-x64/OmniPadServer.App" "$PUBLISH_DIR/OmniPadServer-x64"
+    cp -f "$SCRIPT_DIR/publish/osx-arm64/OmniPadUpdater" "$PUBLISH_DIR/OmniPadUpdater-arm64"
+    cp -f "$SCRIPT_DIR/publish/osx-x64/OmniPadUpdater" "$PUBLISH_DIR/OmniPadUpdater-x64"
+    chmod +x "$PUBLISH_DIR"/OmniPadServer-* "$PUBLISH_DIR"/OmniPadUpdater-* 2>/dev/null || true
+
+    cat << 'EOF' > "$PUBLISH_DIR/OmniPadServer"
+#!/usr/bin/env bash
+ARCH=$(uname -m)
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$ARCH" = "arm64" ]; then
+    exec "$DIR/OmniPadServer-arm64" "$@"
+else
+    exec "$DIR/OmniPadServer-x64" "$@"
 fi
-chmod +x "$PUBLISH_DIR/OmniPadServer" 2>/dev/null || true
+EOF
+    chmod +x "$PUBLISH_DIR/OmniPadServer"
 
-# Publish updater
-dotnet publish "$PCSERVER_DIR/OmniPadUpdater.App/OmniPadUpdater.App.csproj" \
-    -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
-    -o "$PUBLISH_DIR" >/dev/null
+    cat << 'EOF' > "$PUBLISH_DIR/OmniPadUpdater"
+#!/usr/bin/env bash
+ARCH=$(uname -m)
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$ARCH" = "arm64" ]; then
+    exec "$DIR/OmniPadUpdater-arm64" "$@"
+else
+    exec "$DIR/OmniPadUpdater-x64" "$@"
+fi
+EOF
+    chmod +x "$PUBLISH_DIR/OmniPadUpdater"
+else
+    dotnet publish "$PCSERVER_DIR/OmniPadServer.App/OmniPadServer.App.csproj" \
+        -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$PUBLISH_DIR"
 
-chmod +x "$PUBLISH_DIR/OmniPadUpdater" 2>/dev/null || true
+    if [ -f "$PUBLISH_DIR/OmniPadServer.App" ]; then
+        cp -f "$PUBLISH_DIR/OmniPadServer.App" "$PUBLISH_DIR/OmniPadServer"
+    fi
+    chmod +x "$PUBLISH_DIR/OmniPadServer" 2>/dev/null || true
+
+    dotnet publish "$PCSERVER_DIR/OmniPadUpdater.App/OmniPadUpdater.App.csproj" \
+        -c Release -r linux-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true \
+        -o "$PUBLISH_DIR" >/dev/null
+
+    chmod +x "$PUBLISH_DIR/OmniPadUpdater" 2>/dev/null || true
+fi
 
 # Copy WebClient assets to publish bundle
 mkdir -p "$PUBLISH_DIR/WebClient" "$PUBLISH_DIR/wwwroot"
@@ -118,10 +170,17 @@ echo -e "  -> Self-contained server published to: \033[1;32m$PUBLISH_DIR\033[0m"
 
 # Optional Packaging
 if [ "$PACKAGE" = true ]; then
-    echo -e "\n\033[1;33m[+] Packaging OmniPad-Linux-x64.tar.gz...\033[0m"
-    TAR_FILE="$SCRIPT_DIR/OmniPad-Linux-x64.tar.gz"
-    rm -f "$TAR_FILE"
-    tar -czvf "$TAR_FILE" -C "$SCRIPT_DIR/publish" OmniPad-Linux-x64 >/dev/null
+    if [ "$HOST_OS" = "Darwin" ]; then
+        echo -e "\n\033[1;33m[+] Packaging OmniPad-macOS.tar.gz...\033[0m"
+        TAR_FILE="$SCRIPT_DIR/OmniPad-macOS.tar.gz"
+        rm -f "$TAR_FILE"
+        tar -czvf "$TAR_FILE" -C "$SCRIPT_DIR/publish" OmniPad-macOS >/dev/null
+    else
+        echo -e "\n\033[1;33m[+] Packaging OmniPad-Linux-x64.tar.gz...\033[0m"
+        TAR_FILE="$SCRIPT_DIR/OmniPad-Linux-x64.tar.gz"
+        rm -f "$TAR_FILE"
+        tar -czvf "$TAR_FILE" -C "$SCRIPT_DIR/publish" OmniPad-Linux-x64 >/dev/null
+    fi
     SIZE=$(du -h "$TAR_FILE" | cut -f1)
     echo -e "  -> Packaged: \033[1;32m$TAR_FILE\033[0m ($SIZE)"
 fi

@@ -11,7 +11,7 @@
 #>
 
 param(
-    [ValidateSet("win-x64", "linux-x64", "all")]
+    [ValidateSet("win-x64", "linux-x64", "osx-x64", "osx-arm64", "osx-universal", "all")]
     [string]$Runtime = "win-x64",
     [switch]$SkipAndroid,
     [switch]$SkipTests,
@@ -169,6 +169,70 @@ if ($Runtime -in @("linux-x64", "all")) {
         if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
         $publishParent = Split-Path $LinuxPublishDir
         $publishFolder = Split-Path $LinuxPublishDir -Leaf
+        & tar -czvf $tarPath -C $publishParent $publishFolder | Out-Null
+        Write-Host "  -> Packaged: $tarPath ($([Math]::Round((Get-Item $tarPath).Length / 1MB, 2)) MB)" -ForegroundColor Green
+    }
+}
+
+# (C) MACOS PUBLISH
+if ($Runtime -in @("osx-arm64", "osx-x64", "osx-universal", "all")) {
+    Write-Host "  -> Publishing macOS universal self-contained bundles..." -ForegroundColor Cyan
+    $macPublishDir = Join-Path (Join-Path $RootDir "publish") "OmniPad-macOS"
+    $macArmDir = Join-Path (Join-Path $RootDir "publish") "osx-arm64"
+    $macX64Dir = Join-Path (Join-Path $RootDir "publish") "osx-x64"
+
+    if (-not (Test-Path $macPublishDir)) { New-Item -ItemType Directory -Path $macPublishDir -Force | Out-Null }
+
+    & dotnet publish $appCsproj -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $macArmDir | Out-Null
+    & dotnet publish $appCsproj -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $macX64Dir | Out-Null
+    & dotnet publish $updaterCsproj -c Release -r osx-arm64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $macArmDir | Out-Null
+    & dotnet publish $updaterCsproj -c Release -r osx-x64 -f net8.0 --self-contained true -p:PublishSingleFile=true -o $macX64Dir | Out-Null
+
+    Copy-Item -Path (Join-Path $macArmDir "OmniPadServer.App") -Destination (Join-Path $macPublishDir "OmniPadServer-arm64") -Force
+    Copy-Item -Path (Join-Path $macX64Dir "OmniPadServer.App") -Destination (Join-Path $macPublishDir "OmniPadServer-x64") -Force
+    Copy-Item -Path (Join-Path $macArmDir "OmniPadUpdater") -Destination (Join-Path $macPublishDir "OmniPadUpdater-arm64") -Force
+    Copy-Item -Path (Join-Path $macX64Dir "OmniPadUpdater") -Destination (Join-Path $macPublishDir "OmniPadUpdater-x64") -Force
+
+    $macLauncher = @'
+#!/usr/bin/env bash
+ARCH=$(uname -m)
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$ARCH" = "arm64" ]; then
+    exec "$DIR/OmniPadServer-arm64" "$@"
+else
+    exec "$DIR/OmniPadServer-x64" "$@"
+fi
+'@
+    Set-Content -Path (Join-Path $macPublishDir "OmniPadServer") -Value $macLauncher -NoNewline
+
+    $macUpdaterLauncher = @'
+#!/usr/bin/env bash
+ARCH=$(uname -m)
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$ARCH" = "arm64" ]; then
+    exec "$DIR/OmniPadUpdater-arm64" "$@"
+else
+    exec "$DIR/OmniPadUpdater-x64" "$@"
+fi
+'@
+    Set-Content -Path (Join-Path $macPublishDir "OmniPadUpdater") -Value $macUpdaterLauncher -NoNewline
+
+    $macWeb = Join-Path $macPublishDir "WebClient"
+    $macWwwroot = Join-Path $macPublishDir "wwwroot"
+    if (-not (Test-Path $macWeb)) { New-Item -ItemType Directory -Path $macWeb -Force | Out-Null }
+    if (-not (Test-Path $macWwwroot)) { New-Item -ItemType Directory -Path $macWwwroot -Force | Out-Null }
+    Copy-Item -Path "$WebClientDir\*" -Destination "$macWeb\" -Recurse -Force
+    Copy-Item -Path "$WebClientDir\*" -Destination "$macWwwroot\" -Recurse -Force
+    if (Test-Path $versionJson) { Copy-Item -Path $versionJson -Destination $macPublishDir -Force }
+
+    Write-Host "  -> macOS universal bundle published to: $macPublishDir" -ForegroundColor Green
+
+    if ($Package) {
+        Write-Host "  -> Packaging OmniPad-macOS.tar.gz..." -ForegroundColor Yellow
+        $tarPath = Join-Path $RootDir "OmniPad-macOS.tar.gz"
+        if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
+        $publishParent = Split-Path $macPublishDir
+        $publishFolder = Split-Path $macPublishDir -Leaf
         & tar -czvf $tarPath -C $publishParent $publishFolder | Out-Null
         Write-Host "  -> Packaged: $tarPath ($([Math]::Round((Get-Item $tarPath).Length / 1MB, 2)) MB)" -ForegroundColor Green
     }

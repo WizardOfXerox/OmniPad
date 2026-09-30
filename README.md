@@ -6,9 +6,9 @@
 [![ViGEmBus](https://img.shields.io/badge/Driver-ViGEmBus%20WHQL-0078D6.svg)](https://github.com/nefarius/ViGEmBus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**OmniPad** turns any smartphone (Android or iOS) into a tournament-grade, ultra-low latency virtual game controller for PC (Windows & Linux).
+**OmniPad** turns any smartphone (Android or iOS) into a tournament-grade, ultra-low latency virtual game controller for PC (Windows, Linux & macOS).
 
-It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmBus on Windows, native `/dev/uinput` on Linux) or **Sony DualShock 4**, and includes an automatic **Keyboard & Mouse fallback** for classic/strategy games that do not support controllers.
+It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmBus on Windows, native `/dev/uinput` on Linux), **Sony DualShock 4**, and macOS CoreGraphics input simulation, alongside an automatic **Keyboard & Mouse fallback** for classic/strategy games.
 
 ---
 
