@@ -43,6 +43,8 @@ jobs:
           Copy-Item -Path "OmniPad-Portable/*.bat" -Destination "publish/OmniPad-Portable/" -Force
           Copy-Item -Path "OmniPad-Portable/setup_driver.ps1" -Destination "publish/OmniPad-Portable/" -Force
           if (Test-Path "OmniPad-Portable/README.md") { Copy-Item -Path "OmniPad-Portable/README.md" -Destination "publish/OmniPad-Portable/README_PORTABLE.md" -Force }
+          if (Test-Path "LICENSE") { Copy-Item -Path "LICENSE" -Destination "publish/OmniPad-Portable/" -Force }
+          if (Test-Path "PCServer/Libs/LICENSE.txt") { Copy-Item -Path "PCServer/Libs/LICENSE.txt" -Destination "publish/OmniPad-Portable/LICENSE-HIDMaestro.txt" -Force }
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/WebClient" -Force | Out-Null
           New-Item -ItemType Directory -Path "publish/OmniPad-Portable/wwwroot" -Force | Out-Null
           Copy-Item -Path "WebClient/*" -Destination "publish/OmniPad-Portable/WebClient/" -Recurse -Force

@@ -122,6 +122,10 @@ if ($Runtime -in @("win-x64", "all")) {
     & dotnet publish $updaterCsproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
     & dotnet publish $legacinatorCsproj -c Release -r win-x64 -f net8.0-windows --self-contained true -p:PublishSingleFile=true -o $PortableDir | Out-Null
     if (Test-Path $versionJson) { Copy-Item -Path $versionJson -Destination $PortableDir -Force }
+    $licenseRoot = Join-Path $RootDir "LICENSE"
+    if (Test-Path $licenseRoot) { Copy-Item -Path $licenseRoot -Destination $PortableDir -Force }
+    $hidMaestroLicense = Join-Path $RootDir "PCServer\Libs\LICENSE.txt"
+    if (Test-Path $hidMaestroLicense) { Copy-Item -Path $hidMaestroLicense -Destination (Join-Path $PortableDir "LICENSE-HIDMaestro.txt") -Force }
     Write-Host "  -> Windows x64 published to: $PortableDir" -ForegroundColor Green
 
     if ($Package) {

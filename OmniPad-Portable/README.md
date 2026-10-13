@@ -141,4 +141,14 @@ Want to type in game chat, enter cheat codes, or play keyboard-only PC games (li
 
 ---
 
+## 📄 License & Open-Source Attribution
+
+OmniPad is open-source under the [MIT License](LICENSE).
+* Windows driver support powered by the [ViGEm.NET](https://github.com/nefarius/ViGEm.NET) library and the [ViGEmBus](https://github.com/nefarius/ViGEmBus) kernel-mode driver by Benjamin Höglinger-Stelzer (Nefarius).
+* Direct HID controller emulation powered by the [HIDMaestro](https://github.com/hifihedgehog/HIDMaestro) library by [hifihedgehog](https://github.com/hifihedgehog) (MIT License, see `LICENSE-HIDMaestro.txt`).
+* Linux driver support powered by the native Linux kernel `uinput` subsystem.
+* macOS simulation powered by Apple `CoreGraphics` `CGEvent` services.
+
+---
+
 *Enjoy playing with OmniPad!*
