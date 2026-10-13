@@ -174,6 +174,9 @@ public sealed class MacInputSimulator : IPadBackend
     private bool _disposed;
     private PadState _lastState = PadState.Neutral;
     private bool _lastTouchpadClicked;
+    private readonly HashSet<ushort> _instanceKeys = new();
+    private bool _instanceLeftMouseDown;
+    private bool _instanceRightMouseDown;
 
 #pragma warning disable CS0067
     public event EventHandler<RumbleEventArgs>? RumbleReceived;
@@ -201,6 +204,7 @@ public sealed class MacInputSimulator : IPadBackend
         bool lastRtDown = _lastState.RightTrigger > 128;
         if (rtDown != lastRtDown)
         {
+            _instanceLeftMouseDown = rtDown;
             MouseButton(1, rtDown);
         }
 
@@ -208,6 +212,7 @@ public sealed class MacInputSimulator : IPadBackend
         bool lastLtDown = _lastState.LeftTrigger > 128;
         if (ltDown != lastLtDown)
         {
+            _instanceRightMouseDown = ltDown;
             MouseButton(2, ltDown);
         }
 
@@ -235,30 +240,65 @@ public sealed class MacInputSimulator : IPadBackend
         if (state.Clicked != _lastTouchpadClicked)
         {
             _lastTouchpadClicked = state.Clicked;
+            _instanceLeftMouseDown = state.Clicked;
             MouseButton(1, state.Clicked);
         }
     }
 
     public void Disconnect(int slot)
     {
-        ResetAllKeys();
+        ReleaseInstanceInput();
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        ResetAllKeys();
+        ReleaseInstanceInput();
     }
 
-    private static void UpdateKey(bool isDown, bool wasDown, ushort macKeyCode)
+    private void ReleaseInstanceInput()
+    {
+        lock (_stateLock)
+        {
+            foreach (ushort key in _instanceKeys)
+            {
+                _pressedKeys.Remove(key);
+                PostKeyEvent(key, false);
+            }
+            _instanceKeys.Clear();
+
+            if (_instanceLeftMouseDown)
+            {
+                _instanceLeftMouseDown = false;
+                _isLeftMouseDown = false;
+                PostMouseEvent(kCGEventLeftMouseUp, _currentPosition, kCGMouseButtonLeft);
+            }
+            if (_instanceRightMouseDown)
+            {
+                _instanceRightMouseDown = false;
+                _isRightMouseDown = false;
+                PostMouseEvent(kCGEventRightMouseUp, _currentPosition, kCGMouseButtonRight);
+            }
+        }
+    }
+
+    private void UpdateKey(bool isDown, bool wasDown, ushort macKeyCode)
     {
         if (isDown && !wasDown)
         {
+            lock (_stateLock)
+            {
+                _instanceKeys.Add(macKeyCode);
+            }
             KeyboardKey(macKeyCode, true);
         }
         else if (!isDown && wasDown)
         {
+            lock (_stateLock)
+            {
+                _instanceKeys.Remove(macKeyCode);
+            }
             KeyboardKey(macKeyCode, false);
         }
     }

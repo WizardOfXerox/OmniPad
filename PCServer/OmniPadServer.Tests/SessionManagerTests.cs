@@ -202,9 +202,15 @@ public class SessionManagerTests
         Assert.Equal(0, slot);
         Assert.Equal(1, manager.GetSlotStatuses()[0]);
 
-        // Wait for timeout to expire
-        Thread.Sleep(80);
-        manager.CheckTimeouts();
+        // Wait for timeout to expire (poll up to 300ms to guard against runner scheduling jitter)
+        var deadline = DateTime.UtcNow.AddMilliseconds(300);
+        while (DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(20);
+            manager.CheckTimeouts();
+            if (manager.GetSlotStatuses()[0] == 0)
+                break;
+        }
 
         // Slot 0 must be reaped and freed
         Assert.Equal(0, manager.GetSlotStatuses()[0]);

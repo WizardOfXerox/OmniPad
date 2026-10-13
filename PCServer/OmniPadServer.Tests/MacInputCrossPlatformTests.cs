@@ -131,6 +131,7 @@ public class MacInputCrossPlatformTests
     public void TestMacInputSimulator_MouseMovementAndTriggers()
     {
         using var sim = new MacInputSimulator();
+        MacInputSimulator.ResetAllKeys();
         MacInputSimulator.CurrentPosition = new CGPoint(500, 500);
 
         // Right stick: RX=3200 (dx=2), RY=-1600 (dy=1)
@@ -162,6 +163,7 @@ public class MacInputCrossPlatformTests
     public void TestMacInputSimulator_TouchpadClick()
     {
         using var sim = new MacInputSimulator();
+        MacInputSimulator.ResetAllKeys();
         var touchDown = new TouchpadState { Clicked = true };
         sim.SubmitTouchpad(0, in touchDown);
         Assert.True(MacInputSimulator.IsLeftMouseDown);
