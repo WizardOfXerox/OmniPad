@@ -1,8 +1,8 @@
 {
-  "version": "1.4.0",
-  "releaseDate": "2026-09-30",
-  "title": "OmniPad 1.4.0 - Universal Cross-Platform Release (Windows, Linux, macOS, Android, iOS)",
-  "notes": "Full five-platform ecosystem: Windows portable server (WHQL kernel + direct HID), Linux kernel /dev/uinput virtual gamepad engine, macOS universal host server (CoreGraphics CGEvent + DSU motion), native Android client APK, and native iOS client IPA (SwiftUI, CoreHaptics, volume bumpers, NWConnection UDP 250 Hz).",
+  "version": "1.4.1",
+  "releaseDate": "2026-10-13",
+  "title": "OmniPad 1.4.1 - Stability, Driver Bundling & Cross-Platform Fixes",
+  "notes": "Includes HIDMaestro attribution & bundled MIT license in portable distribution (#1), official WHQL ViGEmBus driver automated installer & quick setup script, and cross-platform CI unit test hardening.",
   "downloadUrl": "https://github.com/WizardOfXerox/OmniPad/releases/latest/download/OmniPad-Portable.zip",
   "repository": "https://github.com/WizardOfXerox/OmniPad"
 }

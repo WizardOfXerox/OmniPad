@@ -15,17 +15,17 @@ It emulates a genuine **Microsoft Xbox 360 controller** (via kernel-level ViGEmB
 
 ---
 
-## 📦 Official Release Downloads (v1.4.0)
+## 📦 Official Release Downloads (v1.4.1)
 
-Pre-compiled, self-contained binaries are published and ready to use from the [**GitHub Releases**](https://github.com/WizardOfXerox/OmniPad/releases/tag/v1.4.0) page:
+Pre-compiled, self-contained binaries are published and ready to use from the [**GitHub Releases**](https://github.com/WizardOfXerox/OmniPad/releases/tag/v1.4.1) page:
 
 | Platform | Package | Size | Description |
 |---|---|:---:|---|
-| 🪟 **Windows Host** | [**`OmniPad-Portable.zip`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-Portable.zip) | 262 MB | Complete zero-install Windows server (`win-x64`), WebClient bundle, Updater, and Legacinator driver utility. |
-| 🐧 **Linux Host** | [**`OmniPad-Linux-x64.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-Linux-x64.tar.gz) | 114 MB | Self-contained Linux host server (`linux-x64`) with native `/dev/uinput` Xbox 360 / DS4 kernel emulation. |
-| 🍎 **macOS Host** | [**`OmniPad-macOS.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-macOS.tar.gz) | 142 MB | Universal macOS host package with auto-sensing launcher for Apple Silicon (`arm64`) & Intel (`x64`). |
-| 📱 **Android Client** | [**`OmniPad.apk`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad.apk) | 4.7 MB | Standalone Android client APK with hardware volume bumpers, Bluetooth HID, low-latency UDP, and QR scanner. |
-| 🍏 **iOS Client** | [**`OmniPad.ipa`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad.ipa) | 786 KB | Sideloadable iOS client IPA for AltStore, SideStore, Sideloadly, or TrollStore with CoreHaptics rumble and volume bumpers. |
+| 🪟 **Windows Host** | [**`OmniPad-Portable.zip`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-Portable.zip) | 262 MB | Complete zero-install Windows server (`win-x64`), WebClient bundle, Updater, and Legacinator driver utility. |
+| 🐧 **Linux Host** | [**`OmniPad-Linux-x64.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-Linux-x64.tar.gz) | 114 MB | Self-contained Linux host server (`linux-x64`) with native `/dev/uinput` Xbox 360 / DS4 kernel emulation. |
+| 🍎 **macOS Host** | [**`OmniPad-macOS.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-macOS.tar.gz) | 142 MB | Universal macOS host package with auto-sensing launcher for Apple Silicon (`arm64`) & Intel (`x64`). |
+| 📱 **Android Client** | [**`OmniPad.apk`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad.apk) | 4.7 MB | Standalone Android client APK with hardware volume bumpers, Bluetooth HID, low-latency UDP, and QR scanner. |
+| 🍏 **iOS Client** | [**`OmniPad.ipa`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad.ipa) | 786 KB | Sideloadable iOS client IPA for AltStore, SideStore, Sideloadly, or TrollStore with CoreHaptics rumble and volume bumpers. |
 
 ---
 
@@ -75,7 +75,7 @@ Pre-compiled, self-contained binaries are published and ready to use from the [*
 ## 🚀 Quick Start Guides
 
 ### 1. 🪟 Windows Host (Zero-Install Portable)
-1. Download and extract [**`OmniPad-Portable.zip`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-Portable.zip).
+1. Download and extract [**`OmniPad-Portable.zip`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-Portable.zip).
 2. Double-click `OmniPadServer.exe`.
 3. If prompted by Windows Defender Firewall, allow Private/Public network access.
 4. Scan the ASCII QR code printed in the console using your phone camera (or open the displayed URL in your browser).
@@ -85,7 +85,7 @@ Pre-compiled, self-contained binaries are published and ready to use from the [*
 ---
 
 ### 2. 🐧 Linux Host (Ubuntu, Arch, Fedora, SteamOS)
-1. Download and extract [**`OmniPad-Linux-x64.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-Linux-x64.tar.gz):
+1. Download and extract [**`OmniPad-Linux-x64.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-Linux-x64.tar.gz):
    ```bash
    tar -xzf OmniPad-Linux-x64.tar.gz
    cd OmniPad-Linux-x64
@@ -106,7 +106,7 @@ Pre-compiled, self-contained binaries are published and ready to use from the [*
 ---
 
 ### 3. 🍎 macOS Host (Apple Silicon & Intel)
-1. Download and extract [**`OmniPad-macOS.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad-macOS.tar.gz):
+1. Download and extract [**`OmniPad-macOS.tar.gz`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad-macOS.tar.gz):
    ```bash
    tar -xzf OmniPad-macOS.tar.gz
    cd OmniPad-macOS
@@ -124,7 +124,7 @@ Pre-compiled, self-contained binaries are published and ready to use from the [*
 ---
 
 ### 4. 📱 Android Client
-* **Native App (Recommended)**: Download and install [**`OmniPad.apk`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad.apk).
+* **Native App (Recommended)**: Download and install [**`OmniPad.apk`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad.apk).
   - Open the app, tap the QR icon, and scan the terminal QR code.
   - Enjoy hardware **Volume Up / Down** keys as tactile **LB / RB** bumpers, 250 Hz UDP streaming, and Bluetooth HID mode.
 * **Instant Web Browser**: Open Google Chrome or Firefox on your phone and navigate to `http://<PC-IP>:27502`.
@@ -133,7 +133,7 @@ Pre-compiled, self-contained binaries are published and ready to use from the [*
 
 ### 5. 🍏 iOS Client (iPhone & iPad)
 * **Native Sideloading**:
-  1. Download [**`OmniPad.ipa`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.0/OmniPad.ipa).
+  1. Download [**`OmniPad.ipa`**](https://github.com/WizardOfXerox/OmniPad/releases/download/v1.4.1/OmniPad.ipa).
   2. Sideload using **Sideloadly**, **AltStore**, **SideStore**, or **TrollStore**:
      - Connect iPhone via USB $\to$ Drag `OmniPad.ipa` into Sideloadly $\to$ Enter Apple ID $\to$ Click Start.
   3. On your iPhone: Go to **Settings > General > VPN & Device Management** and trust your developer certificate.
